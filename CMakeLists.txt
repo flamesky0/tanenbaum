@@ -36,9 +36,8 @@ target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
 
 target_include_directories(${EXEC} PRIVATE
 	Inc/
+	Inc/arch
 	Drivers/Inc
-	# Drivers/CMSIS/Device/ST/STM32F4xx/Include
-	Drivers/CMSIS/Include
 	)
 
 #print size of executable
