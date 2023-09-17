@@ -8,15 +8,15 @@ set(FREERTOS_PORT GCC_ARM_CM4F CACHE STRING "")
 add_subdirectory(FreeRTOS)
 
 #LwIP
-set(LWIP_DIR "${CMAKE_SOURCE_DIR}/lwip" CACHE STRING "")
+set(LWIP_DIR "${CMAKE_SOURCE_DIR}/LwIP" CACHE STRING "")
 set(LWIP_INCLUDE_DIRS
 	${LWIP_DIR}/include
-	${LWIP_DIR}/include/lwip
+	${LWIP_DIR}/include/LwIP
 	${LWIP_DIR}/ports/freertos/include
 	${LWIP_DIR}/ports/freertos/include/arch
 	${CMAKE_SOURCE_DIR}/Inc
 	CACHE STRING "")
-include(${CMAKE_SOURCE_DIR}/lwip/Filelists.cmake)
+include(${CMAKE_SOURCE_DIR}/LwIP/Filelists.cmake)
 
 #Drivers prefix
 set(DSRC Drivers/Src)
@@ -52,4 +52,6 @@ add_custom_command(TARGET ${EXEC}
 	COMMAND arm-none-eabi-objcopy -O ihex ${EXEC} ${PROJECT_NAME}.hex
 	COMMAND arm-none-eabi-objcopy -O binary ${EXEC} ${PROJECT_NAME}.bin
 	)
-
+add_custom_target(flash
+		COMMAND st-flash write ${PROJECT_NAME}.bin 0x8000000
+		)
