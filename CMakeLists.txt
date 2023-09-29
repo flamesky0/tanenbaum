@@ -28,18 +28,18 @@ set(SRC
 	Src/stm32f4xx_it.c
 	Src/system_stm32f4xx.c
 	${DSRC}/stm32f4xx_ll_utils.c
+	${DSRC}/stm32f4xx_ll_gpio.c
 	)
 set(EXEC ${PROJECT_NAME}.out)
 add_executable(${EXEC} ${SRC})
 target_link_libraries(${EXEC} PRIVATE lwipcore)
 target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
-
+add_definitions(-DUSE_FULL_LL_DRIVER)
 target_include_directories(${EXEC} PRIVATE
 	Inc/
 	Inc/arch
 	Drivers/Inc
 	)
-
 #print size of executable
 add_custom_command(TARGET ${EXEC}
 	POST_BUILD
@@ -51,6 +51,3 @@ add_custom_command(TARGET ${EXEC}
 	COMMAND arm-none-eabi-objcopy -O ihex ${EXEC} ${PROJECT_NAME}.hex
 	COMMAND arm-none-eabi-objcopy -O binary ${EXEC} ${PROJECT_NAME}.bin
 	)
-add_custom_target(flash
-		COMMAND st-flash write ${PROJECT_NAME}.bin 0x8000000
-		)

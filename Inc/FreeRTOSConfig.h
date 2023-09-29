@@ -1,5 +1,5 @@
 /*
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE
  *
  * http://www.FreeRTOS.org
  * http://aws.amazon.com/freertos
@@ -40,7 +40,6 @@
 #define configENABLE_MPU                         0
 
 #define configUSE_PREEMPTION                     1
-#define configSUPPORT_STATIC_ALLOCATION          1
 #define configSUPPORT_DYNAMIC_ALLOCATION         1
 #define configUSE_IDLE_HOOK                      0
 #define configUSE_TICK_HOOK                      0
@@ -73,14 +72,6 @@
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             256
 
-/* CMSIS-RTOS V2 flags */
-#define configUSE_OS2_THREAD_SUSPEND_RESUME  1
-#define configUSE_OS2_THREAD_ENUMERATE       1
-#define configUSE_OS2_EVENTFLAGS_FROM_ISR    1
-#define configUSE_OS2_THREAD_FLAGS           1
-#define configUSE_OS2_TIMER                  1
-#define configUSE_OS2_MUTEX                  1
-
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 #define INCLUDE_vTaskPrioritySet             1
@@ -96,12 +87,6 @@ to exclude the API function. */
 #define INCLUDE_uxTaskGetStackHighWaterMark  1
 #define INCLUDE_xTaskGetCurrentTaskHandle    1
 #define INCLUDE_eTaskGetState                1
-
-/*
- * The CMSIS-RTOS V2 FreeRTOS wrapper is dependent on the heap implementation used
- * by the application thus the correct define need to be enabled below
- */
-#define USE_FreeRTOS_HEAP_4
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS
@@ -138,10 +123,8 @@ header file. */
 standard names. */
 #define vPortSVCHandler    SVC_Handler
 #define xPortPendSVHandler PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 
-/* IMPORTANT: After 10.3.1 update, Systick_Handler comes from NVIC (if SYS timebase = systick), otherwise from cmsis_os2.c */
-
-#define USE_CUSTOM_SYSTICK_HANDLER_IMPLEMENTATION 0
 
 /* USER CODE BEGIN Defines */
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */

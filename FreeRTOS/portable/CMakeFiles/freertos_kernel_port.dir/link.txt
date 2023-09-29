@@ -1,2 +1,0 @@
-/usr/bin/ar qc libfreertos_kernel_port.a CMakeFiles/freertos_kernel_port.dir/GCC/ARM_CM4F/port.c.o
-/usr/bin/ranlib libfreertos_kernel_port.a
