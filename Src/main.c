@@ -4,15 +4,7 @@
 #include "queue.h"
 #include "task.h"
 
-TaskHandle_t misha;
-void BlinkLed_Task(void * pvParameters) {
-	while (1) {
-		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
-		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
-		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
-		vTaskDelay(pdMS_TO_TICKS(500));
-	}
-}
+
 void SystemClock_Config(void)
 {
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
@@ -47,36 +39,57 @@ void SystemClock_Config(void)
 
 static void GPIO_Init(void)
 {
-	LL_GPIO_InitTypeDef init = {
+	LL_GPIO_InitTypeDef leds = {
 		.Pin = LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15,
 		.Mode = LL_GPIO_MODE_OUTPUT,
 		.Speed = LL_GPIO_SPEED_FREQ_LOW,
 		.OutputType = LL_GPIO_OUTPUT_PUSHPULL,
 		.Pull = LL_GPIO_PULL_NO,
-		.Alternate = 0
+	};
+	LL_GPIO_InitTypeDef switches = {
+		.Pin = LL_GPIO_PIN_10,
+		.Mode = LL_GPIO_MODE_INPUT,
+		.Pull = LL_GPIO_PULL_UP,
 	};
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOE);
-	LL_GPIO_Init(GPIOE, &init);
+	LL_GPIO_Init(GPIOE, &leds);
+	LL_GPIO_Init(GPIOE, &switches);
+	/* make leds go out */
+	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
 
 void Error_Handler(void)
 {
 	__disable_irq();
+	/*  pull pin down, make led light */
+	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);
 	while (1) {  }
 }
 
-#ifdef  USE_FULL_ASSERT
-void assert_failed(uint8_t *file, uint32_t line)
-{
+void BlinkLed_Task(void * pvParameters) {
+	static int i = 0;
+	while (1) {
+		if (LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
+			/*  button is NOT pressed */
+			GPIOE->BSRR = (LL_GPIO_PIN_13);
+		} else {
+			GPIOE->BSRR = (LL_GPIO_PIN_13 << 16);
+		}
+		if (10 == i) {
+			LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
+			i = 0;
+		}
+		++i;
+		vTaskDelay(pdMS_TO_TICKS(50));
+	}
 }
-#endif /* USE_FULL_ASSERT */
 
 int main(void)
 {
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
+	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
 	GPIO_Init();
 	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 5, NULL);
