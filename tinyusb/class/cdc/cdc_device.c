@@ -276,7 +276,7 @@ void cdcd_reset(uint8_t rhport)
 uint16_t cdcd_open(uint8_t rhport, tusb_desc_interface_t const * itf_desc, uint16_t max_len)
 {
   // Only support ACM subclass
-  TU_VERIFY( TUSB_CLASS_CDC                           == itf_desc->bInterfaceClass &&
+  TU_VERIFY( TUSB_CLASS_CDC == itf_desc->bInterfaceClass &&
              CDC_COMM_SUBCLASS_ABSTRACT_CONTROL_MODEL == itf_desc->bInterfaceSubClass, 0);
 
   // Find available interface

@@ -1,36 +1,25 @@
-/* Drivers */
-#include "stm32f4xx_ll_rcc.h"
-#include "stm32f4xx_ll_bus.h"
-#include "stm32f4xx_ll_system.h"
-#include "stm32f4xx_ll_exti.h"
-#include "stm32f4xx_ll_cortex.h"
-#include "stm32f4xx_ll_utils.h"
-#include "stm32f4xx_ll_pwr.h"
-#include "stm32f4xx_ll_dma.h"
-#include "stm32f4xx_ll_gpio.h"
-
+#include "main.h"
 /* FreeRTOS */
 #include <FreeRTOS.h>
 #include "list.h"
 #include "queue.h"
 #include "task.h"
-
+#include "timers.h"
 /* tinyusb */
-#include "tusb.h"
 
-#ifndef NVIC_PRIORITYGROUP_0
-/*!< 0 bit  for pre-emption priority, 4 bits for subpriority */
-#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007)
-/*!< 1 bit  for pre-emption priority, 3 bits for subpriority */
-#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006)
-/*!< 2 bits for pre-emption priority, 2 bits for subpriority */
-#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005)
-/*!< 3 bits for pre-emption priority, 1 bit  for subpriority */
-#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004)
-/*!< 4 bits for pre-emption priority, 0 bit  for subpriority */
-#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003)
-#endif
 
+TimerHandle_t blinky_tm;
+
+/* Blink pattern
+ * - 250 ms  : device not mounted
+ * - 1000 ms : device mounted
+ * - 2500 ms : device is suspended
+ */
+enum {
+	BLINK_NOT_MOUNTED = 250,
+	BLINK_MOUNTED = 1000,
+	BLINK_SUSPENDED = 2500
+};
 
 void SystemClock_Config(void)
 {
@@ -95,40 +84,106 @@ void Error_Handler(void)
 
 void BlinkLed_Task(void * pvParameters)
 {
-	static int i = 0;
 	while (1) {
-		if (LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
-			/*  button is NOT pressed */
-			GPIOE->BSRR = (LL_GPIO_PIN_13);
-		} else {
-			GPIOE->BSRR = (LL_GPIO_PIN_13 << 16);
-		}
-		if (10 == i) {
-			LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
-			i = 0;
-		}
-		++i;
-		vTaskDelay(pdMS_TO_TICKS(50));
+		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
+		vTaskDelay(pdMS_TO_TICKS(500));
 	}
 }
 
-void Usb_Task(void *pvParameters)
+//--------------------------------------------------------------------+
+// Device callbacks
+//--------------------------------------------------------------------+
+
+// Invoked when device is mounted
+void tud_mount_cb(void) {
+	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+}
+
+// Invoked when device is unmounted
+void tud_umount_cb(void) {
+	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
+}
+
+// Invoked when usb bus is suspended
+// remote_wakeup_en : if host allow us  to perform remote wakeup
+// Within 7ms, device must draw an average of current less than 2.5 mA from bus
+void tud_suspend_cb(bool remote_wakeup_en) {
+	(void) remote_wakeup_en;
+	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
+}
+
+// Invoked when usb bus is resumed
+void tud_resume_cb(void) {
+	if (tud_mounted())
+		xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
+	else
+		xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
+}
+
+const uint8_t *tud_descriptor_configuration_cb(uint8_t index)
 {
-	tusb_init();
+	return (const uint8_t *)"misha";
+}
+
+const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
+{
+	return (const uint16_t *)"misha";
+}
+
+const uint8_t *tud_descriptor_device_cb(void)
+{
+	return (const uint8_t *)"misha";
+}
+
+/* Callback that has variable shoot time
+ * depending on usb device mount status */
+void Mount_Status_Cb(TimerHandle_t xTimer)
+{
+	(void) xTimer;
+	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
+}
+
+void Usb_Device_Task(void *pvParameters)
+{
+	/* 1 means HS usb roothub is used */
+	tud_init(TUD_OPT_RHPORT);
 	while (1) {
 		tud_task();
+		tud_cdc_write_flush();
 	}
 }
 
+void Usb_CDC_Task(void *pvParameters)
+{
+	while (1) {
+		if ( tud_cdc_connected() ) {
+			while (tud_cdc_available()) {
+				uint8_t buf[64];
+				uint32_t count = tud_cdc_read(buf, sizeof(buf));
+				(void) count;
+				tud_cdc_write(buf, count);
+			}
+			tud_cdc_write_flush();
+		}
+		vTaskDelay(1);
+	}
+}
 int main(void)
 {
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+	/*  figure out with 0 group */
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
-	NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+	NVIC_SetPriority(SysTick_IRQn,
+			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
 	GPIO_Init();
-	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 5, NULL);
+	blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
+				pdTRUE, NULL, Mount_Status_Cb);
+	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
+	xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
+	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL);
+	xTimerStart(blinky_tm, 0);
 	vTaskStartScheduler();
 	/*  should never get here */
 	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);

@@ -38,6 +38,7 @@ function(add_tinyusb TARGET)
   target_include_directories(${TARGET} PUBLIC
     ${CMAKE_CURRENT_FUNCTION_LIST_DIR}
     ${CMAKE_SOURCE_DIR}/Inc
+    ${CMAKE_SOURCE_DIR}/Inc/arch
     ${CMAKE_SOURCE_DIR}/FreeRTOS/include
     ${CMAKE_SOURCE_DIR}/FreeRTOS/portable/GCC/ARM_CM4F
     #TODO for net driver, should be removed/changed
