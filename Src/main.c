@@ -1,8 +1,35 @@
-#include "main.h"
+/* Drivers */
+#include "stm32f4xx_ll_rcc.h"
+#include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_system.h"
+#include "stm32f4xx_ll_exti.h"
+#include "stm32f4xx_ll_cortex.h"
+#include "stm32f4xx_ll_utils.h"
+#include "stm32f4xx_ll_pwr.h"
+#include "stm32f4xx_ll_dma.h"
+#include "stm32f4xx_ll_gpio.h"
+
+/* FreeRTOS */
 #include <FreeRTOS.h>
 #include "list.h"
 #include "queue.h"
 #include "task.h"
+
+/* tinyusb */
+#include "tusb.h"
+
+#ifndef NVIC_PRIORITYGROUP_0
+/*!< 0 bit  for pre-emption priority, 4 bits for subpriority */
+#define NVIC_PRIORITYGROUP_0         ((uint32_t)0x00000007)
+/*!< 1 bit  for pre-emption priority, 3 bits for subpriority */
+#define NVIC_PRIORITYGROUP_1         ((uint32_t)0x00000006)
+/*!< 2 bits for pre-emption priority, 2 bits for subpriority */
+#define NVIC_PRIORITYGROUP_2         ((uint32_t)0x00000005)
+/*!< 3 bits for pre-emption priority, 1 bit  for subpriority */
+#define NVIC_PRIORITYGROUP_3         ((uint32_t)0x00000004)
+/*!< 4 bits for pre-emption priority, 0 bit  for subpriority */
+#define NVIC_PRIORITYGROUP_4         ((uint32_t)0x00000003)
+#endif
 
 
 void SystemClock_Config(void)
@@ -66,7 +93,8 @@ void Error_Handler(void)
 	while (1) {  }
 }
 
-void BlinkLed_Task(void * pvParameters) {
+void BlinkLed_Task(void * pvParameters)
+{
 	static int i = 0;
 	while (1) {
 		if (LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
@@ -84,6 +112,14 @@ void BlinkLed_Task(void * pvParameters) {
 	}
 }
 
+void Usb_Task(void *pvParameters)
+{
+	tusb_init();
+	while (1) {
+		tud_task();
+	}
+}
+
 int main(void)
 {
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
@@ -95,5 +131,6 @@ int main(void)
 	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 5, NULL);
 	vTaskStartScheduler();
 	/*  should never get here */
+	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);
 	while (1) {  }
 }

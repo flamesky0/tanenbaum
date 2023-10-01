@@ -12,5 +12,5 @@ asm startup file, CMSIS regs definitions
 I use CMake for building (gcc-arm-none-eabi toolchain)
 
 Commands to build project:
-$ ./build.sh
+$ ./build
 $ make -C Build/

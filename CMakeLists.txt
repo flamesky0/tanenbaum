@@ -9,14 +9,18 @@ add_subdirectory(FreeRTOS)
 
 #LwIP
 set(LWIP_DIR "${CMAKE_SOURCE_DIR}/LwIP" CACHE STRING "")
-set(LWIP_INCLUDE_DIRS
+set(LWIP_INCLUDE_DIRS PUBLIC
 	${LWIP_DIR}/include
 	${LWIP_DIR}/include/LwIP
 	${LWIP_DIR}/ports/freertos/include
 	${LWIP_DIR}/ports/freertos/include/arch
 	${CMAKE_SOURCE_DIR}/Inc
+	${CMAKE_SOURCE_DIR}/FreeRTOS/include
 	CACHE STRING "")
 include(${CMAKE_SOURCE_DIR}/LwIP/Filelists.cmake)
+
+#tinyusb
+add_subdirectory(tinyusb)
 
 #Drivers prefix
 set(DSRC Drivers/Src)
@@ -34,20 +38,19 @@ set(EXEC ${PROJECT_NAME}.out)
 add_executable(${EXEC} ${SRC})
 target_link_libraries(${EXEC} PRIVATE lwipcore)
 target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
+target_link_libraries(${EXEC} PRIVATE tinyusb)
 add_definitions(-DUSE_FULL_LL_DRIVER)
-target_include_directories(${EXEC} PRIVATE
+
+target_include_directories(${EXEC} PUBLIC
 	Inc/
 	Inc/arch
 	Drivers/Inc
 	)
-#print size of executable
-add_custom_command(TARGET ${EXEC}
-	POST_BUILD
-	COMMAND arm-none-eabi-size ${EXEC})
 
 #create hex file and firmware
 add_custom_command(TARGET ${EXEC}
 	POST_BUILD
+	COMMAND arm-none-eabi-size ${EXEC}
 	COMMAND arm-none-eabi-objcopy -O ihex ${EXEC} ${PROJECT_NAME}.hex
 	COMMAND arm-none-eabi-objcopy -O binary ${EXEC} ${PROJECT_NAME}.bin
 	)
