@@ -32,11 +32,13 @@
   #include <stdint.h>
 extern uint32_t SystemCoreClock;
 #endif
+
+#include "newlib_syscalls.h"
 #ifndef CMSIS_device_header
 #define CMSIS_device_header "stm32f4xx.h"
 #endif /* CMSIS_device_header */
 
-#define configASSERT_DEFINED 1
+#define configASSERT_DEFINED 			 1
 #define configENABLE_FPU                         0
 #define configENABLE_MPU                         0
 
@@ -57,7 +59,8 @@ extern uint32_t SystemCoreClock;
 #define configUSE_RECURSIVE_MUTEXES              1
 #define configUSE_COUNTING_SEMAPHORES            1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION  0
-#define configUSE_MALLOC_FAILED_HOOK 0
+#define configUSE_NEWLIB_REENTRANT 		 1
+#define configUSE_MALLOC_FAILED_HOOK 		 0
 /* USER CODE BEGIN MESSAGE_BUFFER_LENGTH_TYPE */
 /* Defaults to size_t for backward compatibility, but can be changed
    if lengths will always be less than the number of bytes in a size_t. */

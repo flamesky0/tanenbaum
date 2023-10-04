@@ -26,7 +26,7 @@ elseif(NOT EXISTS ${FREERTOS_CONFIG_FILE_DIRECTORY}/FreeRTOSConfig.h)
 endif()
 
 # Heap number or absolute path to custom heap implementation provided by user
-set(FREERTOS_HEAP "4" CACHE STRING "FreeRTOS heap model number. 1 .. 5. Or absolute path to custom heap source file")
+#set(FREERTOS_HEAP "4" CACHE STRING "FreeRTOS heap model number. 1 .. 5. Or absolute path to custom heap source file")
 
 # FreeRTOS port option
 set(FREERTOS_PORT "" CACHE STRING "FreeRTOS port name")

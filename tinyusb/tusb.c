@@ -53,7 +53,7 @@ bool tusb_init(void)
 #if CFG_TUH_ENABLED && defined(TUH_OPT_RHPORT)
   // init host stack CFG_TUSB_RHPORTx_MODE must be defined
   TU_ASSERT( tuh_init(TUH_OPT_RHPORT) );
-#endi
+#endif
 
   return true;
 }

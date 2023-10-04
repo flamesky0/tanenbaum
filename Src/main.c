@@ -96,11 +96,13 @@ void BlinkLed_Task(void * pvParameters)
 
 // Invoked when device is mounted
 void tud_mount_cb(void) {
+	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
 	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
 }
 
 // Invoked when device is unmounted
 void tud_umount_cb(void) {
+	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
 	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
 }
 
@@ -145,7 +147,6 @@ void Mount_Status_Cb(TimerHandle_t xTimer)
 
 void Usb_Device_Task(void *pvParameters)
 {
-	/* 1 means HS usb roothub is used */
 	tud_init(TUD_OPT_RHPORT);
 	while (1) {
 		tud_task();
@@ -156,18 +157,22 @@ void Usb_Device_Task(void *pvParameters)
 void Usb_CDC_Task(void *pvParameters)
 {
 	while (1) {
-		if ( tud_cdc_connected() ) {
-			while (tud_cdc_available()) {
-				uint8_t buf[64];
-				uint32_t count = tud_cdc_read(buf, sizeof(buf));
-				(void) count;
-				tud_cdc_write(buf, count);
-			}
-			tud_cdc_write_flush();
+		if (!tud_cdc_connected()) {
+			/* Yield here needed */
+			vTaskDelay(1);
+			continue;
 		}
-		vTaskDelay(1);
+		while (tud_cdc_available()) {
+			uint8_t buf[64];
+			uint32_t count = tud_cdc_read(buf, sizeof(buf));
+			(void) count;
+			tud_cdc_write(buf, count);
+		}
+		tud_cdc_write_flush();
 	}
 }
+// malloc
+// printf
 int main(void)
 {
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
@@ -178,11 +183,12 @@ int main(void)
 			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
 	GPIO_Init();
+	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
+	printf("%d", 4);
 	blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
 				pdTRUE, NULL, Mount_Status_Cb);
-	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
-	xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
-	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL);
+	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
+	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL); */
 	xTimerStart(blinky_tm, 0);
 	vTaskStartScheduler();
 	/*  should never get here */

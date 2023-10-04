@@ -5,6 +5,7 @@ enable_language(C ASM)
 #FreeRTOS
 set(FREERTOS_CONFIG_FILE_DIRECTORY "${CMAKE_SOURCE_DIR}/Inc" CACHE STRING "")
 set(FREERTOS_PORT GCC_ARM_CM4F CACHE STRING "")
+set(FREERTOS_HEAP ${CMAKE_SOURCE_DIR}/Src/newlib_syscalls.c)
 add_subdirectory(FreeRTOS)
 
 #LwIP
@@ -31,6 +32,8 @@ set(SRC
 	Src/main.c
 	Src/stm32f4xx_it.c
 	Src/system_stm32f4xx.c
+	Src/newlib_syscalls.c
+	Src/usb_descriptors.c
 	${DSRC}/stm32f4xx_ll_utils.c
 	${DSRC}/stm32f4xx_ll_gpio.c
 	)
@@ -53,4 +56,4 @@ add_custom_command(TARGET ${EXEC}
 	COMMAND arm-none-eabi-size ${EXEC}
 	COMMAND arm-none-eabi-objcopy -O ihex ${EXEC} ${PROJECT_NAME}.hex
 	COMMAND arm-none-eabi-objcopy -O binary ${EXEC} ${PROJECT_NAME}.bin
-	)
+)

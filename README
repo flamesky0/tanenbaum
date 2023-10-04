@@ -1,7 +1,7 @@
 This is my personal project for learning operating systems, networks and computer design
 I'll name it Tanenbaum
 
-I use stm32f407vet6 mcu with FreeRTOS, LwIP, LL(Low Level) device drivers
+I use stm32f407vet6 mcu with FreeRTOS, LwIP, tinyusb, LL(Low Level) device drivers
 
 I build it without using STM32CubeMX and HAL
 (I can talk eight hours straight why I've come to such decision)
@@ -10,6 +10,9 @@ Also used provided by MCU's support package files such as linker script,
 asm startup file, CMSIS regs definitions
 
 I use CMake for building (gcc-arm-none-eabi toolchain)
+
+Also in file Src/newlib_syscall.c implemented (partially yet)
+syscalls for newlib_nano library (it is libc for embedded systems)
 
 Commands to build project:
 $ ./build

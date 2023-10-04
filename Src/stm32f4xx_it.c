@@ -43,9 +43,9 @@ void DebugMon_Handler(void)
 {
 
 }
-
-void OTG_HS_IRQHandler(void)
+void OTG_FS_IRQHandler(void)
 {
-	/*  1 is number of roothub */
+	/*  0 is number of roothub */
+	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
 	tud_int_handler(TUD_OPT_RHPORT);
 }
