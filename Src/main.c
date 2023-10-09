@@ -53,6 +53,20 @@ void SystemClock_Config(void)
 	LL_SetSystemCoreClock(168000000);
 }
 
+/* static void USART1_Init(void)
+{
+	// file stm32f4xx.h ldr exclusive instructions figure out
+	LL_USART_InitTypeDef usart1;
+	usart1.BaudRate 	   = 115200U;
+	usart1.DataWidth 	   = LL_USART_DATAWIDTH_8B;
+	usart1.StopBits            = LL_USART_STOPBITS_1;
+	usart1.Parity              = LL_USART_PARITY_NONE ;
+	usart1.TransferDirection   = LL_USART_DIRECTION_TX_RX;
+	usart1.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
+	usart1.OverSampling        = LL_USART_OVERSAMPLING_16;
+	LL_USART_Init(USART1, &usart1);
+} */
+
 static void GPIO_Init(void)
 {
 	LL_GPIO_InitTypeDef leds = {
@@ -67,9 +81,20 @@ static void GPIO_Init(void)
 		.Mode = LL_GPIO_MODE_INPUT,
 		.Pull = LL_GPIO_PULL_UP,
 	};
+	/* LL_GPIO_InitTypeDef usart1 = {
+		.Pin = LL_GPIO_PIN_9 | LL_GPIO_PIN_10,
+		.Mode = LL_GPIO_MODE_ALTERNATE,
+		.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH,
+		.OutputType = LL_GPIO_OUTPUT_PUSHPULL,
+		.Pull = LL_GPIO_PULL_NO,
+		.Alternate = LL_GPIO_AF_7;
+	}; */
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOE);
+	/*  TODO try disable GPIOA after initialisation */
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	LL_GPIO_Init(GPIOE, &leds);
 	LL_GPIO_Init(GPIOE, &switches);
+	// LL_GPIO_Init(GPIOA, &usart1);
 	/* make leds go out */
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
@@ -90,53 +115,6 @@ void BlinkLed_Task(void * pvParameters)
 	}
 }
 
-//--------------------------------------------------------------------+
-// Device callbacks
-//--------------------------------------------------------------------+
-
-// Invoked when device is mounted
-void tud_mount_cb(void) {
-	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
-	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
-}
-
-// Invoked when device is unmounted
-void tud_umount_cb(void) {
-	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_15);
-	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
-}
-
-// Invoked when usb bus is suspended
-// remote_wakeup_en : if host allow us  to perform remote wakeup
-// Within 7ms, device must draw an average of current less than 2.5 mA from bus
-void tud_suspend_cb(bool remote_wakeup_en) {
-	(void) remote_wakeup_en;
-	xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_SUSPENDED), 0);
-}
-
-// Invoked when usb bus is resumed
-void tud_resume_cb(void) {
-	if (tud_mounted())
-		xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_MOUNTED), 0);
-	else
-		xTimerChangePeriod(blinky_tm, pdMS_TO_TICKS(BLINK_NOT_MOUNTED), 0);
-}
-
-const uint8_t *tud_descriptor_configuration_cb(uint8_t index)
-{
-	return (const uint8_t *)"misha";
-}
-
-const uint16_t *tud_descriptor_string_cb(uint8_t index, uint16_t langid)
-{
-	return (const uint16_t *)"misha";
-}
-
-const uint8_t *tud_descriptor_device_cb(void)
-{
-	return (const uint8_t *)"misha";
-}
-
 /* Callback that has variable shoot time
  * depending on usb device mount status */
 void Mount_Status_Cb(TimerHandle_t xTimer)
@@ -145,32 +123,6 @@ void Mount_Status_Cb(TimerHandle_t xTimer)
 	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
 }
 
-void Usb_Device_Task(void *pvParameters)
-{
-	tud_init(TUD_OPT_RHPORT);
-	while (1) {
-		tud_task();
-		tud_cdc_write_flush();
-	}
-}
-
-void Usb_CDC_Task(void *pvParameters)
-{
-	while (1) {
-		if (!tud_cdc_connected()) {
-			/* Yield here needed */
-			vTaskDelay(1);
-			continue;
-		}
-		while (tud_cdc_available()) {
-			uint8_t buf[64];
-			uint32_t count = tud_cdc_read(buf, sizeof(buf));
-			(void) count;
-			tud_cdc_write(buf, count);
-		}
-		tud_cdc_write_flush();
-	}
-}
 // malloc
 // printf
 int main(void)

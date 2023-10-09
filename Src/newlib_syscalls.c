@@ -37,20 +37,6 @@ int _write (int fd, const void *buf, size_t nbyte)
 	return -1;
 }
 
-int _close (int fildes)
-{
-	(void) fildes;
-	return -1;
-}
-
-long _lseek (int fildes, long offset, int whence)
-{
-	(void) fildes;
-	(void) offset;
-	(void) whence;
-	return -1;
-}
-
 int _read (int fd, void *buf, size_t nbyte)
 {
 	(void) fd;
@@ -58,15 +44,34 @@ int _read (int fd, void *buf, size_t nbyte)
 	(void) nbyte;
 	return -1;
 }
+
+int _close (int fildes)
+{
+	(void) fildes;
+	/*  always succeedes */
+	return 0;
+}
+
+long _lseek (int fildes, long offset, int whence)
+{
+	(void) fildes;
+	(void) offset;
+	(void) whence;
+	errno = EBADF;
+	return -1;
+}
+
+
 int _fstat (int fd, struct stat *sbuf)
 {
 	(void) fd;
 	(void) sbuf;
-	return -1;
+	//st->st_mode = S_IFCHR;
+	return 0;
 }
 
 int _isatty (int fildes)
 {
 	(void) fildes;
-	return -1;
+	return 1;
 }
