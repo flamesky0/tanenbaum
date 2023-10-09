@@ -1,12 +1,6 @@
 #include "main.h"
-/* FreeRTOS */
-#include <FreeRTOS.h>
-#include "list.h"
-#include "queue.h"
-#include "task.h"
-#include "timers.h"
-/* tinyusb */
 
+/* tinyusb */
 
 TimerHandle_t blinky_tm;
 
@@ -20,6 +14,9 @@ enum {
 	BLINK_MOUNTED = 1000,
 	BLINK_SUSPENDED = 2500
 };
+
+extern void usart1_init(void);
+extern void usart1_tx(char *buf, uint32_t num);
 
 void SystemClock_Config(void)
 {
@@ -53,20 +50,6 @@ void SystemClock_Config(void)
 	LL_SetSystemCoreClock(168000000);
 }
 
-/* static void USART1_Init(void)
-{
-	// file stm32f4xx.h ldr exclusive instructions figure out
-	LL_USART_InitTypeDef usart1;
-	usart1.BaudRate 	   = 115200U;
-	usart1.DataWidth 	   = LL_USART_DATAWIDTH_8B;
-	usart1.StopBits            = LL_USART_STOPBITS_1;
-	usart1.Parity              = LL_USART_PARITY_NONE ;
-	usart1.TransferDirection   = LL_USART_DIRECTION_TX_RX;
-	usart1.HardwareFlowControl = LL_USART_HWCONTROL_NONE;
-	usart1.OverSampling        = LL_USART_OVERSAMPLING_16;
-	LL_USART_Init(USART1, &usart1);
-} */
-
 static void GPIO_Init(void)
 {
 	LL_GPIO_InitTypeDef leds = {
@@ -76,35 +59,16 @@ static void GPIO_Init(void)
 		.OutputType = LL_GPIO_OUTPUT_PUSHPULL,
 		.Pull = LL_GPIO_PULL_NO,
 	};
-	LL_GPIO_InitTypeDef switches = {
+	LL_GPIO_InitTypeDef buttons = {
 		.Pin = LL_GPIO_PIN_10,
 		.Mode = LL_GPIO_MODE_INPUT,
 		.Pull = LL_GPIO_PULL_UP,
 	};
-	/* LL_GPIO_InitTypeDef usart1 = {
-		.Pin = LL_GPIO_PIN_9 | LL_GPIO_PIN_10,
-		.Mode = LL_GPIO_MODE_ALTERNATE,
-		.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH,
-		.OutputType = LL_GPIO_OUTPUT_PUSHPULL,
-		.Pull = LL_GPIO_PULL_NO,
-		.Alternate = LL_GPIO_AF_7;
-	}; */
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOE);
-	/*  TODO try disable GPIOA after initialisation */
-	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	LL_GPIO_Init(GPIOE, &leds);
-	LL_GPIO_Init(GPIOE, &switches);
-	// LL_GPIO_Init(GPIOA, &usart1);
-	/* make leds go out */
+	LL_GPIO_Init(GPIOE, &buttons);
+	// for leds to went out
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
-}
-
-void Error_Handler(void)
-{
-	__disable_irq();
-	/*  pull pin down, make led light */
-	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);
-	while (1) {  }
 }
 
 void BlinkLed_Task(void * pvParameters)
@@ -127,6 +91,7 @@ void Mount_Status_Cb(TimerHandle_t xTimer)
 // printf
 int main(void)
 {
+	/*  TODO Dereference null pointer here TODO */
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 	/*  figure out with 0 group */
@@ -135,8 +100,9 @@ int main(void)
 			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
 	GPIO_Init();
+	usart1_init();
+	usart1_tx("JOOPA\n", 7);
 	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
-	printf("%d", 4);
 	blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
 				pdTRUE, NULL, Mount_Status_Cb);
 	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);

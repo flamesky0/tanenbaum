@@ -35,6 +35,13 @@ extern "C" {
 #include "stm32f4xx_ll_pwr.h"
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_usart.h"
+/* FreeRTOS */
+#include <FreeRTOS.h>
+#include "list.h"
+#include "queue.h"
+#include "task.h"
+#include "timers.h"
 
 #include "tusb.h"
 #include <stdlib.h>

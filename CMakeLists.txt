@@ -34,7 +34,11 @@ set(SRC
 	Src/system_stm32f4xx.c
 	Src/newlib_syscalls.c
 	Src/usb_descriptors.c
+	Src/usart1_driver.c
 	${DSRC}/stm32f4xx_ll_utils.c
+	${DSRC}/stm32f4xx_ll_dma.c
+	${DSRC}/stm32f4xx_ll_usart.c
+	${DSRC}/stm32f4xx_ll_rcc.c
 	${DSRC}/stm32f4xx_ll_gpio.c
 	)
 set(EXEC ${PROJECT_NAME}.out)
