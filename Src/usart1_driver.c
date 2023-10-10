@@ -29,16 +29,16 @@ void usart1_init(void)
 		.OverSampling = LL_USART_OVERSAMPLING_8
 	};
 	LL_DMA_InitTypeDef dma2_usart1_config = {
-		.PeriphOrM2MSrcAddress = (uint32_t) &USART1->DR,
+		.PeriphOrM2MSrcAddress = LL_USART_DMA_GetRegAddr(USART1),
 		.MemoryOrM2MDstAddress = 0, // That should be changed later
 		.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH,
-		// .Mode = LL_DMA_MODE_NORMAL,
-		 .Mode = LL_DMA_MODE_PFCTRL,
+		.Mode = LL_DMA_MODE_NORMAL,
+		//.Mode = LL_DMA_MODE_PFCTRL,
 		.PeriphOrM2MSrcIncMode = LL_DMA_PERIPH_NOINCREMENT,
 		.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT,
 		.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE,
 		.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_BYTE,
-		.NbData = 0, // We'll should change that later
+		.NbData = 1, // We'll should change that later
 		.Channel = LL_DMA_CHANNEL_4, // stream 7 but channel 4
 		.Priority = LL_DMA_PRIORITY_HIGH,
 		.FIFOMode = LL_DMA_FIFOMODE_ENABLE,
@@ -53,19 +53,22 @@ void usart1_init(void)
 	LL_GPIO_Init(GPIOA, &usart1_gpio);
 	LL_USART_Init(USART1, &usart1_config);
 	LL_DMA_Init(DMA2, LL_DMA_STREAM_7, &dma2_usart1_config);
-}
-
-/* buf should be located on SRAM, num is number of bytes */
-void usart1_tx(char *buf, uint32_t num)
-{
-	LL_USART_EnableDMAReq_TX(USART1);
 	LL_USART_ClearFlag_TC(USART1);
-	LL_USART_EnableDirectionTx(USART1);
+	LL_USART_EnableIT_TC(USART1);
+	LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_7);
+	LL_USART_EnableDMAReq_TX(USART1);
 	LL_USART_Enable(USART1);
+}
+extern EventGroupHandle_t ev1;
+/* buf should be located on SRAM, num is number of bytes */
+void usart1_tx(const char *buf, const uint32_t num)
+{
 	LL_DMA_SetM2MDstAddress(DMA2, LL_DMA_STREAM_7, (uint32_t)buf);
 	LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_7, num);
 	LL_DMA_EnableStream(DMA2, LL_DMA_STREAM_7);
-	LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_7);
+	// clear bit on return
+	xEventGroupWaitBits(ev1, USART1_TX_SEM_BIT,
+				pdTRUE, pdTRUE, portMAX_DELAY);
 }
 
 /* I'll implement it later
@@ -81,11 +84,23 @@ void usart1_rx(char *buf, uint32_t buflen)
 /*  usart1 tx irq */
 void DMA2_Stream7_IRQHandler(void)
 {
-	LL_DMA_DisableIT_TC(DMA2, LL_DMA_STREAM_7);
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	// LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
+	// LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_7);
+	xEventGroupSetBitsFromISR(ev1, USART1_TX_SEM_BIT,
+				&xHigherPriorityTaskWoken);
 }
 
 void USART1_IRQHandler(void)
 {
+	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+	if (LL_USART_IsActiveFlag_TC(USART1)) {
+		LL_USART_ClearFlag_TC(USART1);
+		xEventGroupSetBitsFromISR(ev1, USART1_TX_SEM_BIT,
+					&xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+		// Semaphore release;
+	}
 /*
  * if (byte received) {
  * 	put char to global buffer;

@@ -42,39 +42,23 @@ extern "C" {
 #include "queue.h"
 #include "task.h"
 #include "timers.h"
+#include "semphr.h"
+#include "event_groups.h"
+/* My Drivers */
+#include "usart1_driver.h"
 
+/* tyny usb */
 #include "tusb.h"
 #include <stdlib.h>
+
 #if defined(USE_FULL_ASSERT)
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Exported types ------------------------------------------------------------*/
-/* USER CODE BEGIN ET */
-
-/* USER CODE END ET */
-
-/* Exported constants --------------------------------------------------------*/
-/* USER CODE BEGIN EC */
-
-/* USER CODE END EC */
-
-/* Exported macro ------------------------------------------------------------*/
-/* USER CODE BEGIN EM */
-
-/* USER CODE END EM */
-
-/* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(void);
-
-/* USER CODE BEGIN EFP */
-
-/* USER CODE END EFP */
+enum ev1_bits {
+	USART1_TX_SEM_BIT = (1 << 0U),
+	USART1_RX_SEM_BIT = (1 << 1U),
+};
 
 /* Private defines -----------------------------------------------------------*/
 #ifndef NVIC_PRIORITYGROUP_0

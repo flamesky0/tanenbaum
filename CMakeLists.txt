@@ -5,7 +5,7 @@ enable_language(C ASM)
 #FreeRTOS
 set(FREERTOS_CONFIG_FILE_DIRECTORY "${CMAKE_SOURCE_DIR}/Inc" CACHE STRING "")
 set(FREERTOS_PORT GCC_ARM_CM4F CACHE STRING "")
-set(FREERTOS_HEAP ${CMAKE_SOURCE_DIR}/Src/newlib_syscalls.c)
+#set(FREERTOS_HEAP ${CMAKE_SOURCE_DIR}/Src/newlib_syscalls.c)
 add_subdirectory(FreeRTOS)
 
 #LwIP
@@ -32,9 +32,11 @@ set(SRC
 	Src/main.c
 	Src/stm32f4xx_it.c
 	Src/system_stm32f4xx.c
-	Src/newlib_syscalls.c
+	# Src/newlib_syscalls.c
 	Src/usb_descriptors.c
 	Src/usart1_driver.c
+	Src/newlib_syscalls.c
+	Src/sync.c
 	${DSRC}/stm32f4xx_ll_utils.c
 	${DSRC}/stm32f4xx_ll_dma.c
 	${DSRC}/stm32f4xx_ll_usart.c
@@ -44,7 +46,7 @@ set(SRC
 set(EXEC ${PROJECT_NAME}.out)
 add_executable(${EXEC} ${SRC})
 target_link_libraries(${EXEC} PRIVATE lwipcore)
-target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
+target_link_libraries(${EXEC} PUBLIC freertos_kernel freertos_kernel_port)
 target_link_libraries(${EXEC} PRIVATE tinyusb)
 add_definitions(-DUSE_FULL_LL_DRIVER)
 

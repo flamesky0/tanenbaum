@@ -2,15 +2,25 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <errno.h>
-#include "newlib_syscalls.h"
+
+#include <FreeRTOS.h>
+#include "list.h"
+#include "queue.h"
+#include "task.h"
+#include "timers.h"
+#include "semphr.h"
+
+#include "usart1_driver.h"
+
+
 /*  _sbrk() specific for stm32f407vet mcu
  *  heap is allocated on CCMRAM just for my fun
  * _impure_ptr
  */
 /* BaseType_t is uint32_t on armv8m */
 struct stat;
-extern uint32_t xTaskResumeAll(void);
-extern void vTaskSuspendAll(void);
+// extern uint32_t xTaskResumeAll(void);
+// extern void vTaskSuspendAll(void);
 uint8_t *_sbrk(int incr)
 {
 #define HEAP_SIZE 64 * 1024 /*  size of CCM memory, 64 KB */
@@ -29,12 +39,24 @@ uint8_t *_sbrk(int incr)
 	return prev_heap_end;
 }
 
+extern SemaphoreHandle_t usart1_tx_mutex;
 int _write (int fd, const void *buf, size_t nbyte)
 {
 	(void) fd;
 	(void) buf;
 	(void) nbyte;
+	//lock mutex
 	return -1;
+	if (fd == 1 || fd == 2) {
+		xSemaphoreTake(usart1_tx_mutex, portMAX_DELAY);
+		usart1_tx(buf, nbyte);
+		xSemaphoreGive(usart1_tx_mutex);
+		return nbyte;
+	}
+	else {
+		errno = EBADF;
+		return -1;
+	}
 }
 
 int _read (int fd, void *buf, size_t nbyte)

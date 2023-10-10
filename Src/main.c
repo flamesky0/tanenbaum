@@ -15,9 +15,6 @@ enum {
 	BLINK_SUSPENDED = 2500
 };
 
-extern void usart1_init(void);
-extern void usart1_tx(char *buf, uint32_t num);
-
 void SystemClock_Config(void)
 {
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
@@ -73,7 +70,10 @@ static void GPIO_Init(void)
 
 void BlinkLed_Task(void * pvParameters)
 {
+
+	// printf("MISHA MOLODETS!\r\n");
 	while (1) {
+		usart1_tx("JOPA\r\n", 4);
 		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
 		vTaskDelay(pdMS_TO_TICKS(500));
 	}
@@ -89,6 +89,7 @@ void Mount_Status_Cb(TimerHandle_t xTimer)
 
 // malloc
 // printf
+extern void syncronisation_init(void);
 int main(void)
 {
 	/*  TODO Dereference null pointer here TODO */
@@ -97,17 +98,22 @@ int main(void)
 	/*  figure out with 0 group */
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	NVIC_SetPriority(SysTick_IRQn,
-			NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+
+	NVIC_SetPriority(DMA2_Stream7_IRQn,
+		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
 	SystemClock_Config();
 	GPIO_Init();
+	syncronisation_init(); /* method for creation mutexes, semaphores... */
 	usart1_init();
-	usart1_tx("JOOPA\n", 7);
+	/* usart1_tx("JOPA\r\n", 6);
+	usart1_tx("JOPA\r\n", 6); */
 	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
-	blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
-				pdTRUE, NULL, Mount_Status_Cb);
+	/* blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
+				pdTRUE, NULL, Mount_Status_Cb); */
 	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
 	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL); */
-	xTimerStart(blinky_tm, 0);
+	//xTimerStart(blinky_tm, 0);
 	vTaskStartScheduler();
 	/*  should never get here */
 	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);
