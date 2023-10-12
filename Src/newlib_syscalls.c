@@ -24,6 +24,9 @@ struct stat;
 uint8_t *_sbrk(int incr)
 {
 #define HEAP_SIZE 64 * 1024 /*  size of CCM memory, 64 KB */
+
+	/* due to heap allocated on CCM, DMAs cannot access it,
+	 * you should take into account, when wanna you printf */
 	static uint8_t heap[HEAP_SIZE]
 		__attribute__((section(".ccmram")));
 	static uint8_t *heap_end = heap; /*  initial value */
@@ -46,9 +49,9 @@ int _write (int fd, const void *buf, size_t nbyte)
 	(void) buf;
 	(void) nbyte;
 	//lock mutex
-	return -1;
 	if (fd == 1 || fd == 2) {
 		xSemaphoreTake(usart1_tx_mutex, portMAX_DELAY);
+		/* usart1_tx uses DMA */
 		usart1_tx(buf, nbyte);
 		xSemaphoreGive(usart1_tx_mutex);
 		return nbyte;

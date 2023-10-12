@@ -67,15 +67,17 @@ static void GPIO_Init(void)
 	// for leds to went out
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
-
+// extern int _write(int fd, const void *buf, size_t nbyte);
 void BlinkLed_Task(void * pvParameters)
 {
-
-	// printf("MISHA MOLODETS!\r\n");
+	usart1_init();
 	while (1) {
-		usart1_tx("JOPA\r\n", 4);
+		usart1_tx("JOPA\r\n", 6);
+		//printf("MISHA MOLODETS!\r\n");
+		// usart1_tx("JOPA\r\n", 6);
 		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
 		vTaskDelay(pdMS_TO_TICKS(500));
+		// LL_DMA_DeInit(DMA2, LL_DMA_STREAM_7);
 	}
 }
 
@@ -102,13 +104,16 @@ int main(void)
 
 	NVIC_SetPriority(DMA2_Stream7_IRQn,
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
+	NVIC_SetPriority(USART1_IRQn,
+		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
+	__NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+	// __NVIC_EnableIRQ(USART1_IRQn);
 	SystemClock_Config();
 	GPIO_Init();
 	syncronisation_init(); /* method for creation mutexes, semaphores... */
-	usart1_init();
-	/* usart1_tx("JOPA\r\n", 6);
-	usart1_tx("JOPA\r\n", 6); */
-	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL);
+	// usart1_tx("JOPA\r\n", 6);
+	// usart1_tx("JOPA\r\n", 6);
+	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL); /* priority 2 */
 	/* blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
 				pdTRUE, NULL, Mount_Status_Cb); */
 	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
