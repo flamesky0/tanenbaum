@@ -11,8 +11,10 @@ asm startup file, CMSIS regs definitions
 
 I use CMake for building (gcc-arm-none-eabi toolchain)
 
-Also in file Src/newlib_syscall.c implemented (partially yet)
-syscalls for newlib_nano library (it is libc for embedded systems)
+For now ready usart driver - tx by dma, rx natively by irq,
+newlib ported, so freertos uses its heap allocated on ccmram.
+I'm planning on removing dma from usart because it cannot read
+from ccmram so printf function cannot work.
 
 Commands to build project:
 $ ./build

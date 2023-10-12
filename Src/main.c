@@ -59,7 +59,7 @@ static void GPIO_Init(void)
 	LL_GPIO_InitTypeDef buttons = {
 		.Pin = LL_GPIO_PIN_10,
 		.Mode = LL_GPIO_MODE_INPUT,
-		.Pull = LL_GPIO_PULL_UP,
+		.Pull = LL_GPIO_PULL_NO, /* it pulled up on the board */
 	};
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOE);
 	LL_GPIO_Init(GPIOE, &leds);
@@ -67,17 +67,52 @@ static void GPIO_Init(void)
 	// for leds to went out
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
-// extern int _write(int fd, const void *buf, size_t nbyte);
+
+/* Leonardo was my favorite Ninja Turtle
+ * Now this is interpreter task that takes commads from user input and does sth
+ */
+char user_input[64];
+extern SemaphoreHandle_t tty_mutex;
+void Leonardo_Task(void *pvParameters)
+{
+	static char status_str[128];
+	int len;
+	usart1_tx("leo task is here!\r\n", 19);
+	while (1) {
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		xSemaphoreTake(tty_mutex, portMAX_DELAY);
+		/* doing some work with user_input[] ... */
+		/* maybe just copy in local array */
+		usart1_tx("I'm woken! (Leo)\r\n", 19);
+		len = sprintf(status_str, "I got \"%s\" string\r\n", user_input);
+		usart1_tx(status_str, len);
+		xSemaphoreGive(tty_mutex);
+	}
+}
+
 void BlinkLed_Task(void * pvParameters)
 {
-	usart1_init();
+	static char status_str[64];
+	uint16_t cnt = 0;
+	uint16_t i = 0;
+	bool button_was_pressed = false;
+	usart1_tx("button task is here!\r\n", 22);
 	while (1) {
-		usart1_tx("JOPA\r\n", 6);
-		//printf("MISHA MOLODETS!\r\n");
-		// usart1_tx("JOPA\r\n", 6);
-		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
-		vTaskDelay(pdMS_TO_TICKS(500));
-		// LL_DMA_DeInit(DMA2, LL_DMA_STREAM_7);
+		if (11 == ++i) {
+			LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
+			i = 0;
+		}
+		if (!LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10) &&
+				!button_was_pressed) {
+			sprintf(status_str,
+			"Button pressed in %uth time\r\n", ++cnt);
+			usart1_tx(status_str, strlen(status_str));
+			button_was_pressed = true;
+		}
+		if(LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
+			button_was_pressed = false;
+		}
+		vTaskDelay(pdMS_TO_TICKS(50));
 	}
 }
 
@@ -86,12 +121,12 @@ void BlinkLed_Task(void * pvParameters)
 void Mount_Status_Cb(TimerHandle_t xTimer)
 {
 	(void) xTimer;
-	LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
 }
 
-// malloc
-// printf
-extern void syncronisation_init(void);
+/* method for creation mutexes, semaphores, etc... */
+extern void synchronisation_init(void);
+TaskHandle_t leo_tsk_hdl;
+extern void TTY_Task(void *pvParameters);
 int main(void)
 {
 	/*  TODO Dereference null pointer here TODO */
@@ -107,18 +142,22 @@ int main(void)
 	NVIC_SetPriority(USART1_IRQn,
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
 	__NVIC_EnableIRQ(DMA2_Stream7_IRQn);
-	// __NVIC_EnableIRQ(USART1_IRQn);
+	__NVIC_EnableIRQ(USART1_IRQn);
 	SystemClock_Config();
 	GPIO_Init();
-	syncronisation_init(); /* method for creation mutexes, semaphores... */
-	// usart1_tx("JOPA\r\n", 6);
-	// usart1_tx("JOPA\r\n", 6);
-	xTaskCreate(BlinkLed_Task, "LED", 128, NULL, 2, NULL); /* priority 2 */
+	synchronisation_init();
+	usart1_init();
+	xTaskCreate(BlinkLed_Task, "LED", 256, NULL, 2, NULL); /* priority 2 */
+#define TTY_TASK_PRIORITY 30
+	xTaskCreate(TTY_Task, "tty", 256, NULL, TTY_TASK_PRIORITY, NULL);
+	xTaskCreate(Leonardo_Task, "Leo", 256, NULL,
+			TTY_TASK_PRIORITY + 1, &leo_tsk_hdl);
+
 	/* blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
 				pdTRUE, NULL, Mount_Status_Cb); */
 	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
 	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL); */
-	//xTimerStart(blinky_tm, 0);
+	// xTimerStart(blinky_tm, 0);
 	vTaskStartScheduler();
 	/*  should never get here */
 	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);

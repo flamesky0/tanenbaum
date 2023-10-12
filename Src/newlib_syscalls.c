@@ -45,15 +45,11 @@ uint8_t *_sbrk(int incr)
 extern SemaphoreHandle_t usart1_tx_mutex;
 int _write (int fd, const void *buf, size_t nbyte)
 {
-	(void) fd;
 	(void) buf;
 	(void) nbyte;
-	//lock mutex
 	if (fd == 1 || fd == 2) {
-		xSemaphoreTake(usart1_tx_mutex, portMAX_DELAY);
-		/* usart1_tx uses DMA */
+		/* usart1_tx uses DMA, function is blocking */
 		usart1_tx(buf, nbyte);
-		xSemaphoreGive(usart1_tx_mutex);
 		return nbyte;
 	}
 	else {
