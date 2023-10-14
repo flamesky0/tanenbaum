@@ -94,7 +94,7 @@ void BlinkLed_Task(void * pvParameters)
 	bool button_was_pressed = false;
 	usart1_tx("button task is here!\r\n", 22);
 	while (1) {
-		if (11 == ++i) {
+		if (11 == ++i) { /* yeap, eleven */
 			LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
 			i = 0;
 		}
@@ -130,13 +130,6 @@ int main(void)
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	NVIC_SetPriority(SysTick_IRQn,
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
-
-	NVIC_SetPriority(DMA2_Stream7_IRQn,
-		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
-	NVIC_SetPriority(USART1_IRQn,
-		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
-	__NVIC_EnableIRQ(DMA2_Stream7_IRQn);
-	__NVIC_EnableIRQ(USART1_IRQn);
 	SystemClock_Config();
 	GPIO_Init();
 	synchronisation_init();

@@ -24,18 +24,21 @@ void usart1_init(void)
 		.BaudRate = 115200U,
 		.DataWidth = LL_USART_DATAWIDTH_8B,
 		.StopBits = LL_USART_STOPBITS_1,
-		.Parity = LL_USART_PARITY_NONE, // TODO
+		.Parity = LL_USART_PARITY_NONE,
 		.TransferDirection = LL_USART_DIRECTION_TX_RX,
 		.HardwareFlowControl = LL_USART_HWCONTROL_NONE,
 		.OverSampling = LL_USART_OVERSAMPLING_8
 	};
-	/*  TODO try disable GPIOA after initialisation */
 	__NVIC_EnableIRQ(USART1_IRQn);
+	NVIC_SetPriority(USART1_IRQn,
+		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
 	LL_GPIO_Init(GPIOA, &usart1_gpio);
 	LL_USART_Init(USART1, &usart1_config);
 	LL_USART_Enable(USART1);
+        /* we dont need to clock gpioa anymore */
+	LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 }
 
 const char *tx_buf_ptr;
@@ -87,6 +90,8 @@ void USART1_IRQHandler(void)
 extern SemaphoreHandle_t tty_mutex;
 extern TaskHandle_t leo_tsk_hdl;
 extern char user_input[64];
+
+/* maybe someday i'll make support for escape sequences */
 void TTY_Task(void *pvParameters)
 {
 	uint8_t cnt = 0;
@@ -101,15 +106,19 @@ void TTY_Task(void *pvParameters)
                         if (cnt == 64 ) {
                                 user_input[0] = '\0';
                                 cnt = 0;
+                                printf("Stupid!\r\n");
+                                LL_USART_DisableIT_RXNE(USART1);
                         }
 			xQueueReceive(usart1_rx_queue, &byte, portMAX_DELAY);
+                        /* cool for debug */
+                        // printf("\r\nnum: %x\r\n", byte);
                         usart1_tx(&byte, 1); // echo char back
                         if ('\r' == byte) {
                                 printf("\r\n");
 				user_input[cnt] = '\0';
 				cnt = 0;
 				xSemaphoreGive(tty_mutex);
-				break;
+                                break;
 			}
                         else if ('\b' == byte) { /* backspace */
 				if (cnt > 0) {
@@ -121,8 +130,6 @@ void TTY_Task(void *pvParameters)
                         else if (byte >= 0x20 && byte <= 0x7E) { /* is printable */
                                 user_input[cnt++] = byte;
                         }
-                        byte = 0;
 		}
-
 	}
 }
