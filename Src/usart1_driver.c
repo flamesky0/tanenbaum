@@ -1,4 +1,5 @@
 #include "main.h"
+#include <ctype.h>
 /* simple tty driver over uart.
  * everything is simple for tx - just push n bytes out
  * but for rx we should buffer input until \n is encountered
@@ -28,114 +29,100 @@ void usart1_init(void)
 		.HardwareFlowControl = LL_USART_HWCONTROL_NONE,
 		.OverSampling = LL_USART_OVERSAMPLING_8
 	};
-	LL_DMA_InitTypeDef dma2_usart1_config = {
-		.PeriphOrM2MSrcAddress = LL_USART_DMA_GetRegAddr(USART1),
-		.MemoryOrM2MDstAddress = 0, // That should be changed later
-		.Direction = LL_DMA_DIRECTION_MEMORY_TO_PERIPH,
-		.Mode = LL_DMA_MODE_NORMAL,
-		.PeriphOrM2MSrcIncMode = LL_DMA_PERIPH_NOINCREMENT,
-		.MemoryOrM2MDstIncMode = LL_DMA_MEMORY_INCREMENT,
-		.PeriphOrM2MSrcDataSize = LL_DMA_PDATAALIGN_BYTE,
-		.MemoryOrM2MDstDataSize = LL_DMA_MDATAALIGN_BYTE,
-		.NbData = 0, // We'll should change that later
-		.Channel = LL_DMA_CHANNEL_4, // stream 7 but channel 4
-		.Priority = LL_DMA_PRIORITY_HIGH,
-		.FIFOMode = LL_DMA_FIFOMODE_ENABLE,
-		.FIFOThreshold = LL_DMA_FIFOTHRESHOLD_3_4,
-		.MemBurst = LL_DMA_PBURST_SINGLE,
-		.PeriphBurst = LL_DMA_PBURST_SINGLE
-	};
 	/*  TODO try disable GPIOA after initialisation */
+	__NVIC_EnableIRQ(USART1_IRQn);
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
-	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA2);
 	LL_GPIO_Init(GPIOA, &usart1_gpio);
 	LL_USART_Init(USART1, &usart1_config);
-	LL_DMA_Init(DMA2, LL_DMA_STREAM_7, &dma2_usart1_config);
 	LL_USART_Enable(USART1);
-	LL_USART_EnableDMAReq_TX(USART1);
-	LL_USART_EnableIT_RXNE(USART1);
-	LL_DMA_EnableIT_TC(DMA2, LL_DMA_STREAM_7);
 }
+
+const char *tx_buf_ptr;
+uint32_t tx_buf_len;
 extern EventGroupHandle_t ev1;
 extern SemaphoreHandle_t usart1_tx_mutex;
-
-/* buf should be located on SRAM, use keyword static, num is number of bytes */
 void usart1_tx(const char *buf, const uint32_t num)
 {
-	/* hold mutex */
 	if (num == 0) {
 		return;
 	}
+	/* hold mutex */
 	xSemaphoreTake(usart1_tx_mutex, portMAX_DELAY);
-	LL_USART_ClearFlag_TC(USART1);
-	LL_DMA_SetM2MDstAddress(DMA2, LL_DMA_STREAM_7, (uint32_t) buf);
-	LL_DMA_SetDataLength(DMA2, LL_DMA_STREAM_7, num);
-	LL_DMA_EnableStream(DMA2, LL_DMA_STREAM_7);
-	/* wait for transmition to complete */
+        tx_buf_ptr = buf;
+        tx_buf_len = num;
+        LL_USART_EnableIT_TXE(USART1);
 	xEventGroupWaitBits(ev1, USART1_TX_SEM_BIT,
-				 pdTRUE, pdTRUE, portMAX_DELAY);
-	/* release mutex */
+                                    pdTRUE, pdTRUE, portMAX_DELAY);
 	xSemaphoreGive(usart1_tx_mutex);
 }
 
-/*  usart1 tx irq */
-void DMA2_Stream7_IRQHandler(void)
+extern QueueHandle_t usart1_rx_queue;
+void USART1_IRQHandler(void)
 {
-	BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-	LL_DMA_ClearFlag_TC7(DMA2);
-	LL_DMA_DisableStream(DMA2, LL_DMA_STREAM_7);
-	xEventGroupSetBitsFromISR(ev1, USART1_TX_SEM_BIT,
-				&xHigherPriorityTaskWoken);
-	portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	char byte;
+        static uint32_t tx_ind = 0;
+        BaseType_t xHigherPriorityTaskWoken;
+
+        if (LL_USART_IsActiveFlag_TXE(USART1) &&
+                                        LL_USART_IsEnabledIT_TXE(USART1)) {
+                LL_USART_TransmitData8(USART1, tx_buf_ptr[tx_ind++]);
+                if (tx_ind == tx_buf_len) {
+                        tx_ind = 0;
+                        LL_USART_DisableIT_TXE(USART1);
+                        xEventGroupSetBitsFromISR(ev1, USART1_TX_SEM_BIT,
+                                                &xHigherPriorityTaskWoken);
+                        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
+            return;
+        }
+        if (LL_USART_IsActiveFlag_RXNE(USART1) &&
+                                        LL_USART_IsEnabledIT_RXNE(USART1)) {
+		byte = LL_USART_ReceiveData8(USART1);
+		xQueueSendFromISR(usart1_rx_queue, &byte, pdFALSE);
+                return;
+	}
 }
 
 extern SemaphoreHandle_t tty_mutex;
-extern QueueHandle_t usart1_rx_queue;
 extern TaskHandle_t leo_tsk_hdl;
 extern char user_input[64];
 void TTY_Task(void *pvParameters)
 {
 	uint8_t cnt = 0;
+        char byte;
+	LL_USART_EnableIT_RXNE(USART1);
 	usart1_tx("tty task is here!\r\n", 19);
 	while(1) {
 		xSemaphoreTake(tty_mutex, portMAX_DELAY);
 		/* priority of leonardo task should be higher */
 		xTaskNotifyGive(leo_tsk_hdl);
 		while (1) {
-			xQueueReceive(usart1_rx_queue, &user_input[cnt], portMAX_DELAY);
-			usart1_tx(&user_input[cnt], 1); // echo char back
-			if ('\b' == user_input[cnt]) {
-				/* we *need* nested if here */
-				if (cnt > 0) {
-					user_input[cnt - 1] = ' ';
-					user_input[cnt] = '\0';
-					/* not atomic a bit, but not lethal either */
-					usart1_tx("\r", 1);
-					usart1_tx(user_input, cnt);
-					--cnt;
-				}
-			}
-			else if ('\r' == user_input[cnt]) {
-				usart1_tx("\n", 1); // put LF
+                        if (cnt == 64 ) {
+                                user_input[0] = '\0';
+                                cnt = 0;
+                        }
+			xQueueReceive(usart1_rx_queue, &byte, portMAX_DELAY);
+                        usart1_tx(&byte, 1); // echo char back
+                        if ('\r' == byte) {
+                                printf("\r\n");
 				user_input[cnt] = '\0';
 				cnt = 0;
 				xSemaphoreGive(tty_mutex);
 				break;
-			} else {
-				++cnt;
 			}
+                        else if ('\b' == byte) { /* backspace */
+				if (cnt > 0) {
+					user_input[--cnt] = '\0';
+                                        printf("\r%s \b", user_input);
+                                        fflush(stdout);
+				}
+			}
+                        else if (byte >= 0x20 && byte <= 0x7E) { /* is printable */
+                                user_input[cnt++] = byte;
+                        }
+                        byte = 0;
 		}
 
-	}
-}
-
-void USART1_IRQHandler(void)
-{
-	char byte;
-	if (LL_USART_IsActiveFlag_RXNE(USART1)) {
-		byte = LL_USART_ReceiveData8(USART1);
-		LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_13);
-		xQueueSendFromISR(usart1_rx_queue, &byte, pdFALSE);
 	}
 }

@@ -75,24 +75,20 @@ char user_input[64];
 extern SemaphoreHandle_t tty_mutex;
 void Leonardo_Task(void *pvParameters)
 {
-	static char status_str[128];
-	int len;
-	usart1_tx("leo task is here!\r\n", 19);
+	printf("leo task is here!\r\n");
 	while (1) {
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 		xSemaphoreTake(tty_mutex, portMAX_DELAY);
 		/* doing some work with user_input[] ... */
 		/* maybe just copy in local array */
-		usart1_tx("I'm woken! (Leo)\r\n", 19);
-		len = sprintf(status_str, "I got \"%s\" string\r\n", user_input);
-		usart1_tx(status_str, len);
+		printf("I'm woken! (Leo)\r\n");
+	        printf("I got \"%s\" string\r\n", user_input);
 		xSemaphoreGive(tty_mutex);
 	}
 }
 
 void BlinkLed_Task(void * pvParameters)
 {
-	static char status_str[64];
 	uint16_t cnt = 0;
 	uint16_t i = 0;
 	bool button_was_pressed = false;
@@ -104,9 +100,7 @@ void BlinkLed_Task(void * pvParameters)
 		}
 		if (!LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10) &&
 				!button_was_pressed) {
-			sprintf(status_str,
-			"Button pressed in %uth time\r\n", ++cnt);
-			usart1_tx(status_str, strlen(status_str));
+                        printf("Button pressed in %uth time\r\n", ++cnt);
 			button_was_pressed = true;
 		}
 		if(LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
