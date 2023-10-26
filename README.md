@@ -1,8 +1,8 @@
-#Tanenbaum
+# Tanenbaum
 This is my personal project for learning operating systems, networks and computer design
 I'll name it Tanenbaum
 
-##Used technologies
+## Used technologies
 I use **stm32f407vet6** mcu with FreeRTOS, LwIP, tinyusb, LL(Low Level) device drivers
 
 I build it *without* using STM32CubeMX and HAL
