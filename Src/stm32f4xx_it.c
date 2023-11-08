@@ -3,7 +3,6 @@
 
 void NMI_Handler(void)
 {
-
   GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);
   while (1)
   {

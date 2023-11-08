@@ -41,26 +41,16 @@ uint8_t *_sbrk(int incr)
 }
 
 extern SemaphoreHandle_t usart1_tx_mutex;
-int _write (int fd, const void *buf, size_t nbyte)
-{
-	(void) buf;
-	(void) nbyte;
-	if (fd == 1 || fd == 2) {
-		usart1_tx(buf, nbyte);
-		return nbyte;
-	}
-	else {
-		errno = EBADF;
-		return -1;
-	}
-}
-
-int _read (int fd, void *buf, size_t nbyte)
+int _write (int fd, void *buf, size_t nbytes)
 {
 	(void) fd;
-	(void) buf;
-	(void) nbyte;
-	return -1;
+        return tty_driver_tx(buf, nbytes);
+}
+
+int _read (int fd, void *buf, size_t nbytes)
+{
+	(void) fd;
+	return tty_driver_rx(buf, nbytes);
 }
 
 int _close (int fildes)
@@ -75,8 +65,7 @@ long _lseek (int fildes, long offset, int whence)
 	(void) fildes;
 	(void) offset;
 	(void) whence;
-	errno = EBADF;
-	return -1;
+	return 0;
 }
 
 

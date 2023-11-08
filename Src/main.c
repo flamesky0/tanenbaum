@@ -1,20 +1,5 @@
 #include "main.h"
 
-/* tinyusb */
-
-TimerHandle_t blinky_tm;
-
-/* Blink pattern
- * - 250 ms  : device not mounted
- * - 1000 ms : device mounted
- * - 2500 ms : device is suspended
- */
-enum {
-	BLINK_NOT_MOUNTED = 250,
-	BLINK_MOUNTED = 1000,
-	BLINK_SUSPENDED = 2500
-};
-
 void SystemClock_Config(void)
 {
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
@@ -71,20 +56,20 @@ static void GPIO_Init(void)
 /* Leonardo was my favorite Ninja Turtle
  * Now this is interpreter task that takes commads from user input and does sth
  */
-char user_input[64];
-extern SemaphoreHandle_t tty_mutex;
 void Leonardo_Task(void *pvParameters)
 {
+        char buf[64];
+        int num;
 	printf("leo task is here!\r\n");
 	while (1) {
-		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-		xSemaphoreTake(tty_mutex, portMAX_DELAY);
-		/* doing some work with user_input[] ... */
-		/* maybe just copy in local array */
-		printf("I'm woken! (Leo)\r\n");
-	        printf("I got \"%s\" string\r\n", user_input);
-		xSemaphoreGive(tty_mutex);
-	}
+                printf("I'm dereferencing NULL pointer: %lx\r\n", *(uint32_t *)0);
+                printf("Enter the number: ");
+                scanf("%d", &num);
+                buf[63] = '\0';
+                printf("num is: \"%d\"\r\n", num);
+                printf("deref of num: %lx\r\n", *(uint32_t*)num);
+                portYIELD();
+        }
 }
 
 void BlinkLed_Task(void * pvParameters)
@@ -92,9 +77,9 @@ void BlinkLed_Task(void * pvParameters)
 	uint16_t cnt = 0;
 	uint16_t i = 0;
 	bool button_was_pressed = false;
-	usart1_tx("button task is here!\r\n", 22);
+        printf("blinkled task is here!\r\n");
 	while (1) {
-		if (11 == ++i) { /* yeap, eleven */
+		if (10 == ++i) {
 			LL_GPIO_TogglePin(GPIOE, LL_GPIO_PIN_14);
 			i = 0;
 		}
@@ -110,17 +95,6 @@ void BlinkLed_Task(void * pvParameters)
 	}
 }
 
-/* Callback that has variable shoot time
- * depending on usb device mount status */
-void Mount_Status_Cb(TimerHandle_t xTimer)
-{
-	(void) xTimer;
-}
-
-/* method for creation mutexes, semaphores, etc... */
-extern void synchronisation_init(void);
-TaskHandle_t leo_tsk_hdl;
-extern void TTY_Task(void *pvParameters);
 int main(void)
 {
 	/*  TODO Dereference null pointer here TODO */
@@ -132,19 +106,11 @@ int main(void)
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
 	GPIO_Init();
-	synchronisation_init();
-	usart1_init();
-	xTaskCreate(BlinkLed_Task, "LED", 256, NULL, 2, NULL); /* priority 2 */
-#define TTY_TASK_PRIORITY 30
-	xTaskCreate(TTY_Task, "tty", 256, NULL, TTY_TASK_PRIORITY, NULL);
+        tty_driver_init();
+	xTaskCreate(BlinkLed_Task, "LED", 256, NULL,
+                        BLINK_TASK_PRIORITY, NULL);
 	xTaskCreate(Leonardo_Task, "Leo", 256, NULL,
-			TTY_TASK_PRIORITY + 1, &leo_tsk_hdl);
-
-	/* blinky_tm = xTimerCreate("LED, mount", pdMS_TO_TICKS(BLINK_NOT_MOUNTED),
-				pdTRUE, NULL, Mount_Status_Cb); */
-	/* xTaskCreate(Usb_Device_Task, "USBD", 4096, NULL, configMAX_PRIORITIES-1, NULL);
-	xTaskCreate(Usb_CDC_Task, "USB_CDC", 128, NULL, configMAX_PRIORITIES-2, NULL); */
-	// xTimerStart(blinky_tm, 0);
+			LEO_TASK_PRIORITY, NULL);
 	vTaskStartScheduler();
 	/*  should never get here */
 	GPIOE->BSRR = (LL_GPIO_PIN_15 << 16);

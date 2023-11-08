@@ -1,16 +1,32 @@
 #include "main.h"
+#include "usart1_driver.h"
 #include <ctype.h>
+
 /* simple tty driver over uart.
  * everything is simple for tx - just push n bytes out
  * but for rx we should buffer input until \n is encountered
  */
 
-/* funtion for transfering num bytes over usart1 dma stream7 */
+static void TTY_Task(void *pvParameters);
 
-/* also we should remember that stack variables are located on ccmram
- * that cannot be accessed by dma, so we should pass only global arrays */
+static struct tty_driver {
+        /* tx mutex */
+        SemaphoreHandle_t lock_tx;
+        /* tx semaphore */
+        SemaphoreHandle_t sem_tx;
+        /* rx mutex */
+        SemaphoreHandle_t lock_rx;
+        /* rx semaphore */
+        SemaphoreHandle_t sem_rx;
 
-void usart1_init(void)
+        QueueHandle_t q_rx;
+        char *tx_buf;
+        size_t tx_num;
+        char *rx_buf;
+        size_t rx_num;
+} tty;
+
+static void usart1_init(void)
 {
 	LL_GPIO_InitTypeDef usart1_gpio = {
 		.Pin = LL_GPIO_PIN_9 | LL_GPIO_PIN_10,
@@ -41,26 +57,46 @@ void usart1_init(void)
 	LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 }
 
-const char *tx_buf_ptr;
-uint32_t tx_buf_len;
-extern EventGroupHandle_t ev1;
-extern SemaphoreHandle_t usart1_tx_mutex;
-void usart1_tx(const char *buf, const uint32_t num)
+void tty_driver_init()
 {
-	if (num == 0) {
-		return;
-	}
-	/* hold mutex */
-	xSemaphoreTake(usart1_tx_mutex, portMAX_DELAY);
-        tx_buf_ptr = buf;
-        tx_buf_len = num;
-        LL_USART_EnableIT_TXE(USART1);
-	xEventGroupWaitBits(ev1, USART1_TX_SEM_BIT,
-                                    pdTRUE, pdTRUE, portMAX_DELAY);
-	xSemaphoreGive(usart1_tx_mutex);
+        tty.lock_tx = xSemaphoreCreateMutex();
+        tty.lock_rx = xSemaphoreCreateMutex();
+        tty.sem_tx = xSemaphoreCreateBinary();
+        tty.sem_rx = xSemaphoreCreateBinary();
+        tty.q_rx = xQueueCreate(16, sizeof(char));
+        usart1_init();
+        xTaskCreate(TTY_Task, "tty", 256, NULL, TTY_TASK_PRIORITY, NULL);
 }
 
-extern QueueHandle_t usart1_rx_queue;
+size_t tty_driver_tx(char *ptr, size_t num)
+{
+        if (num <= 0) {
+                return 0;
+        }
+        xSemaphoreTake(tty.lock_tx, portMAX_DELAY);
+        tty.tx_num = num;
+        tty.tx_buf = ptr;
+        LL_USART_EnableIT_TXE(USART1);
+        /* wait until buffer is transferred */
+        xSemaphoreTake(tty.sem_tx, portMAX_DELAY);
+        xSemaphoreGive(tty.lock_tx);
+        return tty.tx_num;
+}
+
+size_t tty_driver_rx(char *buf, size_t num)
+{
+        if (num <= 0) {
+                return 0;
+        }
+        xSemaphoreTake(tty.lock_rx, portMAX_DELAY);
+        tty.rx_buf = buf;
+        tty.rx_num = num;
+        /* wait until TTY_Task ends reception */
+        xSemaphoreTake(tty.sem_rx, portMAX_DELAY);
+        xSemaphoreGive(tty.lock_rx);
+        return tty.rx_num;
+}
+
 void USART1_IRQHandler(void)
 {
 	char byte;
@@ -69,67 +105,63 @@ void USART1_IRQHandler(void)
 
         if (LL_USART_IsActiveFlag_TXE(USART1) &&
                                         LL_USART_IsEnabledIT_TXE(USART1)) {
-                LL_USART_TransmitData8(USART1, tx_buf_ptr[tx_ind++]);
-                if (tx_ind == tx_buf_len) {
+                LL_USART_TransmitData8(USART1, tty.tx_buf[tx_ind++]);
+                if (tx_ind == tty.tx_num) {
                         tx_ind = 0;
                         LL_USART_DisableIT_TXE(USART1);
-                        xEventGroupSetBitsFromISR(ev1, USART1_TX_SEM_BIT,
-                                                &xHigherPriorityTaskWoken);
+                        xSemaphoreGiveFromISR(tty.sem_tx,
+                                        &xHigherPriorityTaskWoken);
                         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-            }
-            return;
+                }
+                return;
         }
         if (LL_USART_IsActiveFlag_RXNE(USART1) &&
                                         LL_USART_IsEnabledIT_RXNE(USART1)) {
 		byte = LL_USART_ReceiveData8(USART1);
-		xQueueSendFromISR(usart1_rx_queue, &byte, pdFALSE);
+		xQueueSendFromISR(tty.q_rx, &byte, &xHigherPriorityTaskWoken);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
                 return;
 	}
 }
 
-extern SemaphoreHandle_t tty_mutex;
-extern TaskHandle_t leo_tsk_hdl;
-extern char user_input[64];
-
 /* maybe someday i'll make support for escape sequences */
-void TTY_Task(void *pvParameters)
+static void TTY_Task(void *pvParameters)
 {
 	uint8_t cnt = 0;
         char byte;
 	LL_USART_EnableIT_RXNE(USART1);
-	usart1_tx("tty task is here!\r\n", 19);
+        printf("tty task is here!\r\n");
 	while(1) {
-		xSemaphoreTake(tty_mutex, portMAX_DELAY);
-		/* priority of leonardo task should be higher */
-		xTaskNotifyGive(leo_tsk_hdl);
 		while (1) {
-                        if (cnt == 64 ) {
-                                user_input[0] = '\0';
-                                cnt = 0;
-                                printf("Stupid!\r\n");
-                                LL_USART_DisableIT_RXNE(USART1);
-                        }
-			xQueueReceive(usart1_rx_queue, &byte, portMAX_DELAY);
-                        /* cool for debug */
-                        // printf("\r\nnum: %x\r\n", byte);
-                        usart1_tx(&byte, 1); // echo char back
-                        if ('\r' == byte) {
+			xQueueReceive(tty.q_rx, &byte, portMAX_DELAY);
+                        /* echoing back! */
+                        tty_driver_tx(&byte, 1);
+                        if ('\r' == byte) { /* enter pressed */
+                                tty.rx_buf[cnt++] = '\n';
                                 printf("\r\n");
-				user_input[cnt] = '\0';
-				cnt = 0;
-				xSemaphoreGive(tty_mutex);
                                 break;
 			}
                         else if ('\b' == byte) { /* backspace */
 				if (cnt > 0) {
-					user_input[--cnt] = '\0';
-                                        printf("\r%s \b", user_input);
+					tty.rx_buf[--cnt] = '\0';
+                                        printf("\r%s \b", tty.rx_buf);
                                         fflush(stdout);
 				}
 			}
                         else if (byte >= 0x20 && byte <= 0x7E) { /* is printable */
-                                user_input[cnt++] = byte;
+                                tty.rx_buf[cnt++] = byte;
+                                if (cnt == tty.rx_num) {
+                                        break;
+                                }
+                        }
+                        else {
+                                /* exhausting pattern mathing you know ... */
+                                printf("Unknown Symbol\r\n");
+                                break;
                         }
 		}
+                tty.rx_num = cnt;
+                cnt = 0;
+                xSemaphoreGive(tty.sem_rx);
 	}
 }

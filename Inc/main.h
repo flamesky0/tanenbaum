@@ -55,6 +55,11 @@ extern "C" {
 #include "stm32_assert.h"
 #endif /* USE_FULL_ASSERT */
 
+/* max FreeRTOS prioryty is 56 */
+#define TTY_TASK_PRIORITY 30
+#define LEO_TASK_PRIORITY 29
+#define BLINK_TASK_PRIORITY 3
+
 enum ev1_bits {
 	USART1_TX_SEM_BIT = (1 << 0U),
 	USART1_RX_SEM_BIT = (1 << 1U),
