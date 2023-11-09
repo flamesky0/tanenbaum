@@ -56,19 +56,88 @@ static void GPIO_Init(void)
 /* Leonardo was my favorite Ninja Turtle
  * Now this is interpreter task that takes commads from user input and does sth
  */
+
+void print_field(const int *coord) {
+        char sym = 0;
+        for (int i = 0; i < 16; ++i) {
+                for (int j = 0; j < 16; ++j) {
+                        /* i is Y, j is X */
+                        if (!((j + i) % 2)) {
+                                sym = '@';
+                        } else {
+                                sym = '#';
+                        }
+                        if (i == coord[1] && j == coord[0]) {
+                                /* coordinates of Knight */
+                                sym = 'K';
+                        }
+                        if (i == coord[3] && j == coord[2]) {
+                                sym = 'Q';
+                        }
+                        printf("%c ", sym);
+                }
+                printf("\r\n");
+        }
+}
+
+#ifndef max
+#define max(a,b)            (((a) > (b)) ? (a) : (b))
+#endif
+
+#ifndef min
+#define min(a,b)            (((a) < (b)) ? (a) : (b))
+#endif
+
+bool queen_takes_over(const int *coord) {
+        /* the same vert or hor */
+        if (coord[0] == coord[2] ||
+                        coord[1] == coord[3])
+                return true;
+        /* the same diagonal */
+        if (max(coord[0], coord[2]) - min(coord[0], coord[2]) ==
+                max(coord[1], coord[3]) - min(coord[1], coord[3]))
+                return true;
+        return false;
+}
+bool knight_takes_over(const int *coord) {
+        if (max(coord[0], coord[2]) - min(coord[0], coord[2]) == 1 &&
+                        max(coord[1], coord[3]) - min(coord[1], coord[3]) == 2)
+                return true;
+        if (max(coord[0], coord[2]) - min(coord[0], coord[2]) == 2 &&
+                        max(coord[1], coord[3]) - min(coord[1], coord[3]) == 1)
+                return true;
+        return false;
+}
 void Leonardo_Task(void *pvParameters)
 {
-        char buf[64];
-        int num;
+        char *prompt[] = {
+                "Enter the x of the knight: ",
+                "Enter the y of the knight: ",
+                "Enter the x of the queen: ",
+                "Enter the y of the queen: "
+        };
+        int coord[4] = {0, 0, 0, 0};
+        vTaskDelay(pdMS_TO_TICKS(100));
 	printf("leo task is here!\r\n");
 	while (1) {
-                printf("I'm dereferencing NULL pointer: %lx\r\n", *(uint32_t *)0);
-                printf("Enter the number: ");
-                scanf("%d", &num);
-                buf[63] = '\0';
-                printf("num is: \"%d\"\r\n", num);
-                printf("deref of num: %lx\r\n", *(uint32_t*)num);
-                portYIELD();
+                for (int i = 0; i < 4; ++i) {
+                        printf("%s\r\n", prompt[i]);
+                        while(!scanf("%d", &coord[i])
+                                || coord[i] < 0 || coord[i] > 15) {
+                                printf("Enter valid number from 0 to 15!\r\n");
+                                /* clear stdin */
+                                fflush(stdin);
+                        }
+                        printf("entered number: %d\r\n", coord[i]);
+                }
+                if (queen_takes_over(coord)) {
+                        printf("Queen takes over Knight\r\n");
+                }
+                if (knight_takes_over(coord)){
+                        printf("Knight takes over Queen\r\n");
+                }
+                print_field(coord);
+                printf("Success!\r\n\r\n");
         }
 }
 
