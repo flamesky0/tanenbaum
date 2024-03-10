@@ -1,5 +1,4 @@
 #include "main.h"
-#include "usart1_driver.h"
 #include <ctype.h>
 
 /* simple tty driver over uart.
@@ -24,6 +23,7 @@ static struct tty_driver {
         size_t tx_num;
         char *rx_buf;
         size_t rx_num;
+	bool rx_enable;
 } tty;
 
 static void usart1_init(void)
@@ -64,6 +64,7 @@ void tty_driver_init()
         tty.sem_tx = xSemaphoreCreateBinary();
         tty.sem_rx = xSemaphoreCreateBinary();
         tty.q_rx = xQueueCreate(16, sizeof(char));
+	tty.rx_enable = false;
         usart1_init();
         xTaskCreate(TTY_Task, "tty", 256, NULL, TTY_TASK_PRIORITY, NULL);
 }
@@ -91,6 +92,7 @@ size_t tty_driver_rx(char *buf, size_t num)
         xSemaphoreTake(tty.lock_rx, portMAX_DELAY);
         tty.rx_buf = buf;
         tty.rx_num = num;
+	tty.rx_enable = true;
         /* wait until TTY_Task ends reception */
         xSemaphoreTake(tty.sem_rx, portMAX_DELAY);
         xSemaphoreGive(tty.lock_rx);
@@ -124,6 +126,9 @@ void USART1_IRQHandler(void)
 	}
 }
 
+/* This function imitates tty to be used in read() syscall of newlib C
+ * When acquiring semaphore it reads up to tty.rx_num bytes or until '\r' encountered
+ */
 /* maybe someday i'll make support for escape sequences */
 static void TTY_Task(void *pvParameters)
 {
@@ -136,12 +141,15 @@ static void TTY_Task(void *pvParameters)
 			xQueueReceive(tty.q_rx, &byte, portMAX_DELAY);
                         /* echoing back! */
                         tty_driver_tx(&byte, 1);
+			if (!tty.rx_enable)
+				continue;
                         if ('\r' == byte) { /* enter pressed */
                                 tty.rx_buf[cnt++] = '\n';
                                 printf("\r\n");
                                 break;
 			}
-                        else if ('\b' == byte) { /* backspace */
+			/* minicom sends '\b', picocom sends 0x7f */
+                        else if ('\b' == byte || byte == 0x7f) { /* backspace */
 				if (cnt > 0) {
 					tty.rx_buf[--cnt] = '\0';
                                         printf("\r%s \b", tty.rx_buf);
@@ -156,11 +164,12 @@ static void TTY_Task(void *pvParameters)
                         }
                         else {
                                 /* exhausting pattern mathing you know ... */
-                                printf("Unknown Symbol\r\n");
+                                printf("Unknown Symbol %x\r\n", byte);
                                 break;
                         }
 		}
                 tty.rx_num = cnt;
+		tty.rx_enable = false;
                 cnt = 0;
                 xSemaphoreGive(tty.sem_rx);
 	}
