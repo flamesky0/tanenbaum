@@ -146,6 +146,9 @@ static inline void dwc2_phy_init(dwc2_regs_t * dwc2, uint8_t hs_phy_type)
   {
     // Enable on-chip FS PHY
     dwc2->stm32_gccfg |= STM32_GCCFG_PWRDWN;
+    // On my board VBUS is not connected to USB controller
+    dwc2->stm32_gccfg |= STM32_GCCFG_VBDEN;
+
   }else
   {
     // Disable FS PHY
