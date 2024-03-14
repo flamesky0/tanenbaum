@@ -1,3 +1,4 @@
+![image](https://github.com/flamesky0/tanenbaum/assets/79990715/680b67f1-19c9-410a-b964-3a24c2063ac9)
 # Tanenbaum
 This is my personal project for learning operating systems, networks and computer design
 I'll name it Tanenbaum
