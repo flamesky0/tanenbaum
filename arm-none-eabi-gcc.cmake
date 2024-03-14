@@ -7,7 +7,6 @@ set(CMAKE_C_EXTENTIONS OFF)
 
 set(CMAKE_C_FLAGS "-mcpu=cortex-m4 -mthumb\
 	-mfloat-abi=hard -mfpu=fpv4-sp-d16\
-        -fno-delete-null-pointer-checks\
 	-fdata-sections -ffunction-sections -Wall -O2"
 	CACHE STRING ""
 	)

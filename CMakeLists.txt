@@ -34,6 +34,7 @@ set(SRC
 	Src/system_stm32f4xx.c
 	Src/usart1_driver.c
 	Src/newlib_syscalls.c
+	Src/usb_device.c
 	${DSRC}/stm32f4xx_ll_utils.c
 	${DSRC}/stm32f4xx_ll_dma.c
 	${DSRC}/stm32f4xx_ll_usart.c
@@ -42,15 +43,18 @@ set(SRC
 	)
 set(EXEC ${PROJECT_NAME}.out)
 add_executable(${EXEC} ${SRC})
+target_link_libraries(${EXEC} PRIVATE tinyusb tinyusb_config)
 target_link_libraries(${EXEC} PRIVATE lwipcore)
-target_link_libraries(${EXEC} PUBLIC freertos_kernel freertos_kernel_port)
-target_link_libraries(${EXEC} PRIVATE tinyusb)
+target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
+# target_link_libraries(${EXEC} PRIVATE tinyusb_config)
+# add_tinyusb(${EXEC})
 add_definitions(-DUSE_FULL_LL_DRIVER)
 
-target_include_directories(${EXEC} PUBLIC
+target_include_directories(${EXEC} PRIVATE
 	Inc/
 	Inc/arch
 	Drivers/Inc
+	tinyusb/
 	)
 
 #create hex file and firmware

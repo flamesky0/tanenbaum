@@ -35,7 +35,7 @@ function(add_tinyusb TARGET)
     # typec
     ${CMAKE_CURRENT_FUNCTION_LIST_DIR}/typec/usbc.c
     )
-  target_include_directories(${TARGET} PUBLIC
+  target_include_directories(${TARGET} PRIVATE
     ${CMAKE_CURRENT_FUNCTION_LIST_DIR}
     ${CMAKE_SOURCE_DIR}/Inc
     ${CMAKE_SOURCE_DIR}/Inc/arch
@@ -83,7 +83,7 @@ target_include_directories(tinyusb_config PRIVATE
 	${CMAKE_SOURCE_DIR}/tinyusb
 	${CMAKE_SOURCE_DIR}/Inc
 	${CMAKE_SOURCE_DIR}/Inc/arch
-        ${CMAKE_SOURCE_DIR}/FreeRTOS/include
+	${CMAKE_SOURCE_DIR}/FreeRTOS/include
 	${CMAKE_SOURCE_DIR}/FreeRTOS/portable/GCC/ARM_CM4F
 	)
 target_sources(tinyusb_config	PRIVATE
@@ -117,7 +117,7 @@ if (NOT TARGET ${TINYUSB_CONFIG_TARGET})
   message(FATAL_ERROR "${TINYUSB_CONFIG_TARGET} target is not defined")
 endif()
 
- # Link with tinyusb_config target
-target_link_libraries(${TINYUSB_TARGET} PUBLIC
-  ${TINYUSB_CONFIG_TARGET}
+# Link with tinyusb_config target
+target_link_libraries(${TINYUSB_CONFIG_TARGET} ${TINYUSB_TARGET}
+
 )
