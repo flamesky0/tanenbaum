@@ -46,6 +46,7 @@ extern "C" {
 #include "event_groups.h"
 /* My Drivers */
 #include "usart1_driver.h"
+#include "usb_device.h"
 
 /* tyny usb */
 #include "tusb.h"
@@ -56,10 +57,10 @@ extern "C" {
 #endif /* USE_FULL_ASSERT */
 
 /* max FreeRTOS prioryty is 56 */
-#define TTY_TASK_PRIORITY 30
-#define LEO_TASK_PRIORITY 29
 #define BLINK_TASK_PRIORITY 3
-
+#define LEO_TASK_PRIORITY 29
+#define TTY_TASK_PRIORITY 30
+#define USBD_TASK_PRIORITY 40
 enum ev1_bits {
 	USART1_TX_SEM_BIT = (1 << 0U),
 	USART1_RX_SEM_BIT = (1 << 1U),

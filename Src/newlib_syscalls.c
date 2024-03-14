@@ -40,7 +40,6 @@ uint8_t *_sbrk(int incr)
 	return prev_heap_end;
 }
 
-extern SemaphoreHandle_t usart1_tx_mutex;
 int _write (int fd, void *buf, size_t nbytes)
 {
 	(void) fd;

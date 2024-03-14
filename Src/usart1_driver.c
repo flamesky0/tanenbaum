@@ -28,7 +28,7 @@ static struct tty_driver {
 
 static void usart1_init(void)
 {
-	LL_GPIO_InitTypeDef usart1_gpio = {
+	LL_GPIO_InitTypeDef usart1_pins = {
 		.Pin = LL_GPIO_PIN_9 | LL_GPIO_PIN_10,
 		.Mode = LL_GPIO_MODE_ALTERNATE,
 		.Speed = LL_GPIO_SPEED_FREQ_VERY_HIGH,
@@ -50,7 +50,7 @@ static void usart1_init(void)
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 10, 0));
 	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_USART1);
-	LL_GPIO_Init(GPIOA, &usart1_gpio);
+	LL_GPIO_Init(GPIOA, &usart1_pins);
 	LL_USART_Init(USART1, &usart1_config);
 	LL_USART_Enable(USART1);
         /* we dont need to clock gpioa anymore */

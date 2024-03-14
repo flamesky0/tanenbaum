@@ -53,9 +53,6 @@ static void GPIO_Init(void)
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
 
-/* Leonardo was my favorite Ninja Turtle
- * Now this is interpreter task that takes commads from user input and does sth
- */
 
 void print_field(const int *coord) {
         char sym = 0;
@@ -99,6 +96,7 @@ bool queen_takes_over(const int *coord) {
                 return true;
         return false;
 }
+
 bool knight_takes_over(const int *coord) {
         if (max(coord[0], coord[2]) - min(coord[0], coord[2]) == 1 &&
                         max(coord[1], coord[3]) - min(coord[1], coord[3]) == 2)
@@ -108,6 +106,11 @@ bool knight_takes_over(const int *coord) {
                 return true;
         return false;
 }
+
+/* Leonardo was my favorite Ninja Turtle
+ * Now this is interpreter task that takes commands from user input and does sth
+ */
+/* TODO try unaligned access to memory */
 void Leonardo_Task(void *pvParameters)
 {
         char *prompt[] = {
@@ -125,7 +128,7 @@ void Leonardo_Task(void *pvParameters)
                         while(!scanf("%d", &coord[i])
                                 || coord[i] < 0 || coord[i] > 15) {
                                 printf("Enter valid number from 0 to 15!\r\n");
-                                /* clear stdin */
+                                // clear stdin
                                 fflush(stdin);
                         }
                         printf("entered number: %d\r\n", coord[i]);
@@ -176,6 +179,7 @@ int main(void)
 	SystemClock_Config();
 	GPIO_Init();
         tty_driver_init();
+	usb_device_init();
 	xTaskCreate(BlinkLed_Task, "LED", 256, NULL,
                         BLINK_TASK_PRIORITY, NULL);
 	xTaskCreate(Leonardo_Task, "Leo", 256, NULL,
