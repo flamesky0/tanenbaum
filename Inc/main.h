@@ -36,6 +36,7 @@ extern "C" {
 #include "stm32f4xx_ll_dma.h"
 #include "stm32f4xx_ll_gpio.h"
 #include "stm32f4xx_ll_usart.h"
+#include "stm32f4xx_ll_i2c.h"
 /* FreeRTOS */
 #include <FreeRTOS.h>
 #include "list.h"
@@ -46,7 +47,9 @@ extern "C" {
 #include "event_groups.h"
 /* My Drivers */
 #include "usart1_driver.h"
+#include "i2c_flash.h"
 #include "usb_device.h"
+#include "cli.h"
 
 /* tyny usb */
 #include "tusb.h"
@@ -57,8 +60,8 @@ extern "C" {
 #endif /* USE_FULL_ASSERT */
 
 /* max FreeRTOS prioryty is 56 */
+#define CLI_TASK_PRIORITY 1
 #define BLINK_TASK_PRIORITY 3
-#define LEO_TASK_PRIORITY 29
 #define TTY_TASK_PRIORITY 30
 #define USBD_TASK_PRIORITY 40
 enum ev1_bits {

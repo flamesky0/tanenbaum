@@ -156,7 +156,7 @@ static void TTY_Task(void *pvParameters)
                                         fflush(stdout);
 				}
 			}
-                        else if (byte >= 0x20 && byte <= 0x7E) { /* is printable */
+                        else if (isascii(byte)) {
                                 tty.rx_buf[cnt++] = byte;
                                 if (cnt == tty.rx_num) {
                                         break;
@@ -164,8 +164,8 @@ static void TTY_Task(void *pvParameters)
                         }
                         else {
                                 /* exhausting pattern mathing you know ... */
-                                printf("Unknown Symbol %x\r\n", byte);
-                                break;
+                                printf(" Unknown Symbol %x\r\n", byte);
+                                continue;
                         }
 		}
                 tty.rx_num = cnt;

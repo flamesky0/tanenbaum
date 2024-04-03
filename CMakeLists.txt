@@ -35,11 +35,14 @@ set(SRC
 	Src/usart1_driver.c
 	Src/newlib_syscalls.c
 	Src/usb_device.c
+	Src/cli.c
+	Src/i2c_flash.c
 	${DSRC}/stm32f4xx_ll_utils.c
 	${DSRC}/stm32f4xx_ll_dma.c
 	${DSRC}/stm32f4xx_ll_usart.c
 	${DSRC}/stm32f4xx_ll_rcc.c
 	${DSRC}/stm32f4xx_ll_gpio.c
+	${DSRC}/stm32f4xx_ll_i2c.c
 	)
 set(EXEC ${PROJECT_NAME}.out)
 add_executable(${EXEC} ${SRC})
