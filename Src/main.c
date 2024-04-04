@@ -9,15 +9,14 @@ void SystemClock_Config(void)
 	LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
 	LL_RCC_HSE_Enable();
 
-/* Wait till HSE is ready */
-	while(LL_RCC_HSE_IsReady() != 1) {
-
-	}
+	/* Wait till HSE is ready */
+	while(LL_RCC_HSE_IsReady() != 1) {  }
 	LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_25, 336, LL_RCC_PLLP_DIV_2);
+	/* Config clocks for usb controller */
 	LL_RCC_PLL_ConfigDomain_48M(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_25, 336, LL_RCC_PLLQ_DIV_7);
 	LL_RCC_PLL_Enable();
 
-/* Wait till PLL is ready */
+	/* Wait till PLL is ready */
 	while(LL_RCC_PLL_IsReady() != 1) {
 
 	}
@@ -33,7 +32,7 @@ void SystemClock_Config(void)
 	LL_SetSystemCoreClock(168000000);
 }
 
-static void GPIO_Init(void)
+static void gpio_init(void)
 {
 	LL_GPIO_InitTypeDef leds = {
 		.Pin = LL_GPIO_PIN_13 | LL_GPIO_PIN_14 | LL_GPIO_PIN_15,
@@ -59,6 +58,7 @@ void BlinkLed_Task(void * pvParameters)
 	uint16_t cnt = 0;
 	uint16_t i = 0;
 	bool button_was_pressed = false;
+	gpio_init();
         printf("blinkled task is here!\r\n");
 	while (1) {
 		if (10 == ++i) {
@@ -77,6 +77,21 @@ void BlinkLed_Task(void * pvParameters)
 	}
 }
 
+static void rtc_init() {
+	LL_RTC_InitTypeDef rtc = {
+		.HourFormat = LL_RTC_HOURFORMAT_24HOUR,
+		.AsynchPrescaler = 127,
+		.SynchPrescaler = 255
+	};
+
+	while (LL_RCC_LSE_IsReady() != 1) {  }
+	LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+	LL_RCC_EnableRTC();
+
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
+	LL_RTC_Init(RTC, &rtc);
+}
+
 int main(void)
 {
 	/*  TODO Dereference null pointer here TODO */
@@ -87,7 +102,7 @@ int main(void)
 	NVIC_SetPriority(SysTick_IRQn,
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
 	SystemClock_Config();
-	GPIO_Init();
+	rtc_init();
         tty_driver_init();
 	usb_device_init();
 	cli_setup();

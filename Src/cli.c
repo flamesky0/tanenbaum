@@ -7,25 +7,27 @@ static void print_help(void)
 {
 	char *help = "supported commands:\r\n"
 		     "pin set [0|1] -- sets/resets LED1 on the board\r\n"
+		     "time [set|get]\r\n"
+		     "date [set|get]\r\n"
 		     "i2c [read|write str] -- access to i2c flash\r\n"
 		     "TBD\r\n";
 	puts(help);
 }
 
-int match_pin_cmd(char *buf, int len)
+static int match_pin_cmd(const char *buf, int len)
 {
 	/* dont wanna check buf borders here */
 	int i = 0;
 	while (isblank(buf[i]))
 		++i;
-	if (!strncmp(buf + i, "pin", 3))
+	if (!strcmp(buf + i, "pin"))
 		i = i + 3;
 	else
 		return 0;
 
 	while (isblank(buf[i]))
 		++i;
-	if (!strncmp(buf + i, "set", 3))
+	if (!strcmp(buf + i, "set"))
 		i = i + 3;
 	else
 		return 0;
@@ -45,9 +47,30 @@ int match_pin_cmd(char *buf, int len)
 	return 0;
 }
 
-int match_i2c_cmd(char *buf, int len)
+static int match_time_cmd(const char *buf, int len)
 {
-	while (isblank)
+	int i = 0;
+	while (isblank(buf[i]))
+		++i;
+	if (!strcmp(buf + i, "time"))
+		i = i + 4;
+	else
+		return 0;
+
+	while (isblank(buf[i]))
+		++i;
+	if (!strcmp(buf + i, "set")) {
+		i = i + 3;
+	} else if (!strcmp(buf + i, "get")) {
+		i = i + 3;
+	} else {
+		/* not matched */
+		return 0;
+	}
+
+}
+static int match_i2c_cmd(const char *buf, int len)
+{
 	/* not matched */
 	return 0;
 }
