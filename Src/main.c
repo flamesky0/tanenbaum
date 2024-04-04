@@ -2,12 +2,17 @@
 
 void SystemClock_Config(void)
 {
+
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
 	while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_5) {
 
 	}
 	LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE1);
 	LL_RCC_HSE_Enable();
+
+	LL_RCC_LSI_Enable();
+	// while(LL_RCC_LSI_IsReady() != 1) {  }
+	LL_PWR_EnableBkUpAccess();
 
 	/* Wait till HSE is ready */
 	while(LL_RCC_HSE_IsReady() != 1) {  }
@@ -70,7 +75,7 @@ void BlinkLed_Task(void * pvParameters)
                         printf("Button pressed in %uth time\r\n", ++cnt);
 			button_was_pressed = true;
 		}
-		if(LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
+		if (LL_GPIO_IsInputPinSet(GPIOE, LL_GPIO_PIN_10)) {
 			button_was_pressed = false;
 		}
 		vTaskDelay(pdMS_TO_TICKS(50));
@@ -84,23 +89,23 @@ static void rtc_init() {
 		.SynchPrescaler = 255
 	};
 
-	while (LL_RCC_LSE_IsReady() != 1) {  }
-	LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSE);
+	if (LL_RCC_GetRTCClockSource() != LL_RCC_RTC_CLKSOURCE_LSI) {
+		LL_RCC_ForceBackupDomainReset();
+		LL_RCC_ReleaseBackupDomainReset();
+		LL_RCC_SetRTCClockSource(LL_RCC_RTC_CLKSOURCE_LSI);
+	}
 	LL_RCC_EnableRTC();
-
-	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_RTCAPB);
 	LL_RTC_Init(RTC, &rtc);
 }
 
 int main(void)
 {
-	/*  TODO Dereference null pointer here TODO */
 	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
-	/*  figure out with 0 group */
 	NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 	NVIC_SetPriority(SysTick_IRQn,
 		NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 15, 0));
+
 	SystemClock_Config();
 	rtc_init();
         tty_driver_init();
