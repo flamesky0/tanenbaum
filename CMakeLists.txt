@@ -5,7 +5,6 @@ enable_language(C ASM)
 #FreeRTOS
 set(FREERTOS_CONFIG_FILE_DIRECTORY "${CMAKE_SOURCE_DIR}/Inc" CACHE STRING "")
 set(FREERTOS_PORT GCC_ARM_CM4F CACHE STRING "")
-#set(FREERTOS_HEAP ${CMAKE_SOURCE_DIR}/Src/newlib_syscalls.c)
 add_subdirectory(FreeRTOS)
 
 #LwIP
@@ -50,8 +49,6 @@ add_executable(${EXEC} ${SRC})
 target_link_libraries(${EXEC} PRIVATE tinyusb tinyusb_config)
 target_link_libraries(${EXEC} PRIVATE lwipcore)
 target_link_libraries(${EXEC} PRIVATE freertos_kernel freertos_kernel_port)
-# target_link_libraries(${EXEC} PRIVATE tinyusb_config)
-# add_tinyusb(${EXEC})
 add_definitions(-DUSE_FULL_LL_DRIVER)
 
 target_include_directories(${EXEC} PRIVATE
