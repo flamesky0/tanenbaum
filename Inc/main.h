@@ -61,7 +61,7 @@ extern "C" {
 #endif /* USE_FULL_ASSERT */
 
 /* max FreeRTOS prioryty is 56 */
-#define CLI_TASK_PRIORITY 1
+#define CLI_TASK_PRIORITY 2
 #define BLINK_TASK_PRIORITY 3
 #define TTY_TASK_PRIORITY 30
 #define USBD_TASK_PRIORITY 40

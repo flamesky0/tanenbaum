@@ -4,6 +4,9 @@ void SystemClock_Config(void)
 {
 
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
+	LL_FLASH_EnableInstCache();
+	LL_FLASH_EnableDataCache();
+	LL_FLASH_EnablePrefetch();
 	while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_5) {
 
 	}
@@ -96,6 +99,8 @@ static void rtc_init() {
 	}
 	LL_RCC_EnableRTC();
 	LL_RTC_Init(RTC, &rtc);
+	/* disable write protection back */
+	LL_RTC_DisableWriteProtection(RTC);
 }
 
 int main(void)
