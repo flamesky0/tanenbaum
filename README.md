@@ -17,8 +17,14 @@ I use CMake for building (gcc-arm-none-eabi toolchain)
 
 ## Current status
 For now ready usart driver - tx - rx natively by irq,
+
 newlib ported, so freertos uses its heap allocated on ccmram.
-look at tag in git history
+
+rtc is working and clocked by LSE, powered by battery.
+
+tinyusb is ported so enumeration succedes.
+
+cli is added
 
 Commands to build project:
 
