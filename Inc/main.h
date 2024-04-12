@@ -64,6 +64,7 @@ extern "C" {
 #define CLI_TASK_PRIORITY 2
 #define BLINK_TASK_PRIORITY 3
 #define TTY_TASK_PRIORITY 30
+#define USB_HID_TASK_PRIORITY 39
 #define USBD_TASK_PRIORITY 40
 enum ev1_bits {
 	USART1_TX_SEM_BIT = (1 << 0U),

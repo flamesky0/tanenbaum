@@ -1,14 +1,38 @@
 #include"main.h"
 
-void OTG_FS_IRQHandler(void) {
+void OTG_FS_IRQHandler(void)
+{
 	tud_int_handler(0); // 0 means FS
 }
 
-static void usb_device_task(void *param) {
+static void usb_device_task(void *param)
+{
 	(void) param;
 	tud_init(0); // FS init
 	while(true) {
 		tud_task();
+	}
+}
+
+enum
+{
+  ITF_NUM_HID,
+  ITF_NUM_TOTAL
+};
+
+static void usb_hid_task(void *param)
+{
+	uint8_t report_id = 0;
+	uint8_t button = 0;
+	int8_t delta = 5;
+	uint8_t vertical = 0;
+	uint8_t horizontal = 0;
+
+	vTaskDelay(pdMS_TO_TICKS(5000));
+	while (1) {
+		printf("moving the mouse!\r\n");
+		tud_hid_n_mouse_report(ITF_NUM_HID, report_id, button, delta, delta, vertical, horizontal);
+		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }
 
@@ -29,6 +53,7 @@ void usb_device_init(void) {
 
 
 	xTaskCreate(usb_device_task, "usbd", 256, NULL, USBD_TASK_PRIORITY, NULL);
+	xTaskCreate(usb_hid_task, "usbhid", 256, NULL, USB_HID_TASK_PRIORITY, NULL);
 }
 
 // Invoked when received GET_REPORT control request
@@ -95,7 +120,7 @@ uint8_t const * tud_descriptor_device_cb(void)
 
 uint8_t const desc_hid_report[] =
 {
-  TUD_HID_REPORT_DESC_GENERIC_INOUT(CFG_TUD_HID_EP_BUFSIZE)
+  TUD_HID_REPORT_DESC_MOUSE()
 };
 
 // invoked when received get hid report descriptor
@@ -107,12 +132,6 @@ uint8_t const * tud_hid_descriptor_report_cb(uint8_t itf)
   return desc_hid_report;
 }
 
-enum
-{
-  ITF_NUM_HID,
-  ITF_NUM_TOTAL
-};
-
 #define  CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
 
 #define EPNUM_HID   0x01
@@ -123,7 +142,7 @@ uint8_t const desc_configuration[] =
   TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 
   // Interface number, string index, protocol, report descriptor len, In address, size & polling interval
-  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE, sizeof(desc_hid_report), 0x80 | EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 10)
+  TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_MOUSE, sizeof(desc_hid_report), 0x80 | EPNUM_HID, CFG_TUD_HID_EP_BUFSIZE, 10)
 };
 
 // Invoked when received GET CONFIGURATION DESCRIPTOR
@@ -151,8 +170,8 @@ enum {
 char const *string_desc_arr[] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
-  "TinyUSB",                     // 1: Manufacturer
-  "TinyUSB Device",              // 2: Product
+  "Misha molodets!",                     // 1: Manufacturer
+  "STM32F407VET6 if Misha",              // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
 };
 
