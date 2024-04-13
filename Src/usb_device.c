@@ -20,18 +20,86 @@ enum
   ITF_NUM_TOTAL
 };
 
+static void joystick_init(void)
+{
+	LL_GPIO_InitTypeDef gpioc = {
+		.Pin = LL_GPIO_PIN_2 | LL_GPIO_PIN_3,
+		.Mode = LL_GPIO_MODE_ANALOG,
+		.Pull = LL_GPIO_PULL_NO
+	};
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+	LL_GPIO_Init(GPIOC, &gpioc);
+
+	LL_ADC_InitTypeDef adc_init = {
+		.Resolution = LL_ADC_RESOLUTION_8B,
+		.DataAlignment = LL_ADC_DATA_ALIGN_RIGHT,
+		.SequencersScanMode = LL_ADC_SEQ_SCAN_ENABLE
+	};
+	LL_ADC_CommonInitTypeDef adc_common_init = {
+		.CommonClock = LL_ADC_CLOCK_SYNC_PCLK_DIV8,
+		.Multimode = LL_ADC_MULTI_INDEPENDENT
+	};
+	LL_ADC_INJ_InitTypeDef adc_inj_init = {
+		.TriggerSource = LL_ADC_INJ_TRIG_SOFTWARE,
+		.SequencerLength = LL_ADC_INJ_SEQ_SCAN_ENABLE_2RANKS,
+		.SequencerDiscont = LL_ADC_INJ_SEQ_DISCONT_1RANK,
+		.TrigAuto = LL_ADC_INJ_TRIG_INDEPENDENT
+	};
+	LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_ADC1);
+
+	LL_ADC_Init(ADC1, &adc_init);
+	LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &adc_common_init);
+	LL_ADC_INJ_Init(ADC1, &adc_inj_init);
+
+	LL_ADC_SetSequencersScanMode(ADC1, LL_ADC_SEQ_SCAN_ENABLE);
+	LL_ADC_INJ_SetSequencerRanks(ADC1, LL_ADC_INJ_RANK_1, LL_ADC_CHANNEL_12);
+	LL_ADC_INJ_SetSequencerRanks(ADC1, LL_ADC_INJ_RANK_2, LL_ADC_CHANNEL_13);
+	// not needed
+	LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_12, LL_ADC_SAMPLINGTIME_480CYCLES);
+	LL_ADC_Enable(ADC1);
+	LL_ADC_INJ_StartConversionSWStart(ADC1);
+
+	LL_AHB1_GRP1_DisableClock(LL_AHB1_GRP1_PERIPH_GPIOC);
+}
+
+static int8_t get_delta_by_adc_val(int val)
+{
+	if (val < 32)
+		return -3;
+	if (val < 64)
+		return -2;
+	if (val < 96)
+		return -1;
+	if (val < 160)
+		return 0;
+	if (val < 192)
+		return 1;
+	if (val < 224)
+		return 2;
+	return 3;
+}
 static void usb_hid_task(void *param)
 {
 	uint8_t report_id = 0;
 	uint8_t button = 0;
-	int8_t delta = 5;
+	int8_t delta_x = 0;
+	int8_t delta_y = 0;
+	int adc_x_val = 0;
+	int adc_y_val = 0;
 	uint8_t vertical = 0;
 	uint8_t horizontal = 0;
 
-	vTaskDelay(pdMS_TO_TICKS(5000));
+	joystick_init();
+	//vTaskDelay(pdMS_TO_TICKS(50));
 	while (1) {
-		printf("moving the mouse!\r\n");
-		tud_hid_n_mouse_report(ITF_NUM_HID, report_id, button, delta, delta, vertical, horizontal);
+		// printf("reading adc!\r\n");
+		adc_x_val = ADC1->JDR1;
+		adc_y_val = ADC1->JDR2;
+		delta_x = get_delta_by_adc_val(adc_x_val);
+		delta_y = get_delta_by_adc_val(adc_y_val);
+		//printf("x: %d, y: %d\r\n", adc_x_val, adc_y_val);
+		tud_hid_n_mouse_report(ITF_NUM_HID, report_id, button, delta_x, delta_y, vertical, horizontal);
+		LL_ADC_INJ_StartConversionSWStart(ADC1);
 		vTaskDelay(pdMS_TO_TICKS(10));
 	}
 }
@@ -171,7 +239,7 @@ char const *string_desc_arr[] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
   "Misha molodets!",                     // 1: Manufacturer
-  "STM32F407VET6 if Misha",              // 2: Product
+  "STM32F407VET6 of Misha",              // 2: Product
   NULL,                          // 3: Serials will use unique ID if possible
 };
 

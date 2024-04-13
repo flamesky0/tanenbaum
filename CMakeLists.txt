@@ -41,6 +41,7 @@ set(SRC
 	${DSRC}/stm32f4xx_ll_usart.c
 	${DSRC}/stm32f4xx_ll_rcc.c
 	${DSRC}/stm32f4xx_ll_rtc.c
+	${DSRC}/stm32f4xx_ll_adc.c
 	${DSRC}/stm32f4xx_ll_gpio.c
 	${DSRC}/stm32f4xx_ll_i2c.c
 	)
