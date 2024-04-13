@@ -1,6 +1,6 @@
 #include "main.h"
 
-void SystemClock_Config(void)
+static void SystemClock_Config(void)
 {
 
 	LL_FLASH_SetLatency(LL_FLASH_LATENCY_5);
@@ -61,7 +61,7 @@ static void gpio_init(void)
 	LL_GPIO_WriteOutputPort(GPIOE, 0xffffU);
 }
 
-void BlinkLed_Task(void * pvParameters)
+static void BlinkLed_Task(void * pvParameters)
 {
 	uint16_t cnt = 0;
 	uint16_t i = 0;
